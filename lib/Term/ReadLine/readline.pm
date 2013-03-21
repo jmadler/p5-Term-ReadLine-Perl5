@@ -1111,12 +1111,23 @@ sub rl_bind
     &actually_do_binding(@arr);
 }
 
+=head2 read_an_init_file
+
+C<read_an_init_file(inputrc_file)>
+
+Reads and executes I<inputrc_file> which does things like Sets input
+key bindings in key maps.
+
+If there was a problem return 0.  Otherwise return 1;
+
+=cut
+
 sub read_an_init_file {
     my $file = shift;
     my $include_depth = shift;
     local *RC;
     $file =~ s/^~([\\\/])/$ENV{HOME}$1/ if not -f $file and exists $ENV{HOME};
-    return unless open RC, "< $file";
+    return 0 unless open RC, "< $file";
     my (@action) = ('exec'); ## exec, skip, ignore (until appropriate endif)
     my (@level) = ();        ## if, else
 
@@ -1167,12 +1178,12 @@ sub read_an_init_file {
             }
         } elsif ($action[$#action] ne 'exec') {
             ## skipping this one....
-        # readline permits trailing comments in inputrc
-        # this seems to solve the warnings caused by trailing comments in the
-        # default /etc/inputrc on Mandrake Linux boxes.
-        } elsif (m/\s*set\s+(\S+)\s+(\S*)/) {   # Allow trailing comment
+        # Readline permits trailing comments in inputrc
+        # For example, /etc/inputrc on Mandrake Linux boxes has trailing 
+	# comments
+        } elsif (m/\s*set\s+(\S+)\s+(\S*)/) { # Allow trailing comment
             &rl_set($1, $2, $file);
-        } elsif (m/^\s*(\S+):\s+("(?:\\.|[^\\\"])*"|'(\\.|[^\\\'])*')/) {       # Allow trailing comment
+        } elsif (m/^\s*(\S+):\s+("(?:\\.|[^\\\"])*"|'(\\.|[^\\\'])*')/) { # Allow trailing comment
             &rl_bind($1, $2);
         } elsif (m/^\s*(\S+|"[^\"]+"):\s+(\S+)/) { # Allow trailing comment
             &rl_bind($1, $2);
@@ -1182,6 +1193,7 @@ sub read_an_init_file {
         }
     }
     close(RC);
+    return 1;
 }
 
 sub F_ReReadInitFile
