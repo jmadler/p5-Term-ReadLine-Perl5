@@ -46,7 +46,7 @@ $rl_getc = \&rl_getc;
 #           $rl_completer_word_break_characters $rl_special_prefixes
 #           $rl_readline_name @rl_History $rl_MaxHistorySize
 #             $rl_max_numeric_arg $rl_OperateCount
-#           $KillBuffer $dumb_term $stdin_not_tty $InsertMode 
+#           $KillBuffer $dumb_term $stdin_not_tty $InsertMode
 #           $rl_NoInitFromFile);
 #
 # my ($InputLocMsg, $term_OUT, $term_IN);
@@ -62,12 +62,12 @@ $rl_getc = \&rl_getc;
 # my ($BRKINT, $ECHO, $FIONREAD, $ICANON, $ICRNL, $IGNBRK, $IGNCR, $INLCR,
 #     $ISIG, $ISTRIP, $NCCS, $OPOST, $RAW, $TCGETS, $TCOON, $TCSETS, $TCXONC,
 #     $TERMIOS_CFLAG, $TERMIOS_IFLAG, $TERMIOS_LFLAG, $TERMIOS_NORMAL_IOFF,
-#     $TERMIOS_NORMAL_ION, $TERMIOS_NORMAL_LOFF, $TERMIOS_NORMAL_LON, 
-#     $TERMIOS_NORMAL_OOFF, $TERMIOS_NORMAL_OON, $TERMIOS_OFLAG, 
-#     $TERMIOS_READLINE_IOFF, $TERMIOS_READLINE_ION, $TERMIOS_READLINE_LOFF, 
-#     $TERMIOS_READLINE_LON, $TERMIOS_READLINE_OOFF, $TERMIOS_READLINE_OON, 
-#     $TERMIOS_VMIN, $TERMIOS_VTIME, $TIOCGETP, $TIOCGWINSZ, $TIOCSETP, 
-#     $fion, $fionread_t, $mode, $sgttyb_t, 
+#     $TERMIOS_NORMAL_ION, $TERMIOS_NORMAL_LOFF, $TERMIOS_NORMAL_LON,
+#     $TERMIOS_NORMAL_OOFF, $TERMIOS_NORMAL_OON, $TERMIOS_OFLAG,
+#     $TERMIOS_READLINE_IOFF, $TERMIOS_READLINE_ION, $TERMIOS_READLINE_LOFF,
+#     $TERMIOS_READLINE_LON, $TERMIOS_READLINE_OOFF, $TERMIOS_READLINE_OON,
+#     $TERMIOS_VMIN, $TERMIOS_VTIME, $TIOCGETP, $TIOCGWINSZ, $TIOCSETP,
+#     $fion, $fionread_t, $mode, $sgttyb_t,
 #     $termios, $termios_t, $winsz, $winsz_t);
 # my ($line, $initialized, $term_readkey);
 #
@@ -99,7 +99,7 @@ $rl_getc = \&rl_getc;
 # my $Vi_search_reverse;  # True for '?' search, false for '/'
 
 =head1 SUBROUTINES
-=cut 
+=cut
 
 sub get_window_size
 {
@@ -254,7 +254,7 @@ sub preinit
       #$sgttyb_t   = 'C4 S';
       #$winsz_t = "S S S S";  # rows,cols, xpixel, ypixel
       $sgttyb_t   = 'C4 S' if !defined($sgttyb_t);
-      $winsz_t = "S S S S" if !defined($winsz_t);  
+      $winsz_t = "S S S S" if !defined($winsz_t);
       # rows,cols, xpixel, ypixel
       $winsz = pack($winsz_t,0,0,0,0);
       $fionread_t = "L";
@@ -273,7 +273,7 @@ sub preinit
     $rl_delete_selection = 1;
     $rl_correct_sw = ($inDOS ? 1 : 0);
     $rl_scroll_nextline = 1 unless defined $rl_scroll_nextline;
-    $rl_last_pos_can_backspace = ($inDOS ? 0 : 1) # Can backspace when the 
+    $rl_last_pos_can_backspace = ($inDOS ? 0 : 1) # Can backspace when the
       unless defined $rl_last_pos_can_backspace;  # whole line is filled?
 
     $rl_start_default_at_beginning = 0;
@@ -536,7 +536,7 @@ sub preinit
         $ {"$KeyMap{name}_0"}{'default'} = 'F_DoEscVersion';
     }
     &rl_bind(@add_bindings);
-    
+
     # Vi input mode.
     &InitKeymap(*vi_keymap, 'SelfInsert', 'vi_keymap',
 
@@ -659,8 +659,8 @@ sub preinit
                     qq/"\e[B"/,   'NextHistory',        # down  arrow
                     qq/"\e[C"/,   'ForwardChar',                # right arrow
                     qq/"\e[D"/,   'BackwardChar',               # left  arrow
-                    qq/"\e\\*"/,  'ViAfterEsc', 
-                    qq/"\e[\\*"/, 'ViAfterEsc', 
+                    qq/"\e\\*"/,  'ViAfterEsc',
+                    qq/"\e[\\*"/, 'ViAfterEsc',
                    )
                 ))),
                );
@@ -869,7 +869,7 @@ C<_unescape($string)> -> List of keys
 This internal function that takes C<$string> possibly containing
 escape sequences, and converts to a series of octal keys.
 
-It has special rules for dealing with readline-specific escape-sequence 
+It has special rules for dealing with readline-specific escape-sequence
 commands.
 
 New-style key bindings are enclosed in double-quotes.
@@ -884,7 +884,7 @@ Characters are taken verbatim except the special cases:
 
 Special case "\C-\M-x", should be treated like "\M-\C-x".
 
-=cut 
+=cut
 
 my @ESCAPE_REGEXPS = (
     # Ctrl-meta <x>
@@ -897,17 +897,17 @@ my @ESCAPE_REGEXPS = (
     [ qr/^\\x([0-9a-fA-F]{2})/, sub { hex(shift) } ],
     # octal value
     [ qr/^\\([0-7]{3})/, sub { oct(shift) } ],
-    # default  
+    # default
     [ qr/^\\\*$/, sub { 'default'; } ],
-    # EOT (Ctrl-D) 
+    # EOT (Ctrl-D)
     [ qr/^\\d/, sub { 4 } ],
-    # Backspace 
+    # Backspace
     [ qr/\\b/, sub { 0x7f } ],
     # Escape Sequence
-    [ qr/\\(.)/, 
-      sub { 
-          my $chr = shift; 
-          ord(($chr =~ /^[afnrtv]$/) ? eval(qq("\\$chr")) : $chr); 
+    [ qr/\\(.)/,
+      sub {
+          my $chr = shift;
+          ord(($chr =~ /^[afnrtv]$/) ? eval(qq("\\$chr")) : $chr);
       } ],
     );
 
@@ -1047,7 +1047,7 @@ arrow keys:
     "\e[[C": forward-char
     "\e[[D": backward-char
 
-=cut 
+=cut
 
 sub rl_bind
 {
@@ -1101,7 +1101,7 @@ sub rl_bind
             push(@keys, $key);
         }
 
-        # 
+        #
         ## Now do the mapping of the sequence represented in @keys
          #
         # print "&actually_do_binding($func, @keys)\n"; ##DEBUG
@@ -1179,8 +1179,8 @@ sub read_an_init_file {
         } elsif ($action[$#action] ne 'exec') {
             ## skipping this one....
         # Readline permits trailing comments in inputrc
-        # For example, /etc/inputrc on Mandrake Linux boxes has trailing 
-	# comments
+        # For example, /etc/inputrc on Mandrake Linux boxes has trailing
+    # comments
         } elsif (m/\s*set\s+(\S+)\s+(\S*)/) { # Allow trailing comment
             &rl_set($1, $2, $file);
         } elsif (m/^\s*(\S+):\s+("(?:\\.|[^\\\"])*"|'(\\.|[^\\\'])*')/) { # Allow trailing comment
@@ -1222,8 +1222,8 @@ sub get_ornaments_selected {
         my @set = @$rl_term_set;
 
         Term::ReadLine::TermCap::ornaments(__PACKAGE__,
-                                        join(',', 
-                                             (split(/,/, $Orig))[0,1]) 
+                                        join(',',
+                                             (split(/,/, $Orig))[0,1])
                                         . ',mr,me') ;
         @set[4,5] = @$rl_term_set[2,3];
         Term::ReadLine::TermCap::ornaments(__PACKAGE__, $Orig);
@@ -1242,9 +1242,9 @@ sub get_line {
 A version readline for a dumb terminal, that is one that doesn't have
 many terminal editing capabilities.
 
-=cut 
+=cut
 
-sub readline_dumb 
+sub readline_dumb
 {
     local $\ = '';
     print $term_OUT $prompt;
@@ -1259,18 +1259,18 @@ sub readline_dumb
 
 =head2 readline
 
-C<&readline::readline($prompt, $default)> 
+C<&readline::readline($prompt, $default)>
 
-The main routine to call interactively read lines. 
+The main routine to call interactively read lines.
 
-C<$default> can be omitted. The next input line is returned or 
+C<$default> can be omitted. The next input line is returned or
 C<undef> on EOF.
 
-=cut 
+=cut
 
 sub readline
 {
-    $Term::ReadLine::Perl5::term->register_Tk 
+    $Term::ReadLine::Perl5::term->register_Tk
       if not $Term::ReadLine::registered and $Term::ReadLine::toloop
         and defined &Tk::DoOneEvent;
     if ($stdin_not_tty) {
@@ -1379,13 +1379,13 @@ sub readline
            };
            if (!$@ and $Orig ne ',,,'){
                Term::ReadLine::TermCap::ornaments(__PACKAGE__,
-                                               join(',', 
+                                               join(',',
                                                     (split(/,/, $Orig))[0,1])
                                                . ',mr,me');
         }
             my $F_SelfInsert_Real = \&F_SelfInsert;
             *F_SelfInsert = sub {
-                Term::ReadLine::TermCap::ornaments(__PACKAGE__); 
+                Term::ReadLine::TermCap::ornaments(__PACKAGE__);
                 &F_ViChangeEntireLine;
                 local $^W=0;
                 *F_SelfInsert = $F_SelfInsert_Real;
@@ -1393,7 +1393,7 @@ sub readline
             };
             my $F_ViEndInsert_Real = \&F_ViEndInsert;
             *F_ViEndInsert = sub {
-               Term::ReadLine::TermCap::ornaments(__PACKAGE__, $Orig); 
+               Term::ReadLine::TermCap::ornaments(__PACKAGE__, $Orig);
                 local $^W=0;
                 *F_SelfInsert = $F_SelfInsert_Real;
                 *F_ViEndInsert = $F_ViEndInsert_Real;
@@ -1469,7 +1469,7 @@ Returns the ordinal number for the corresponding control code.
 For example I<ctrl(ord('a'))> returns the ordinal for I<Ctrl-A>
 or 1. I<ctrl(ord('A'))> does the same thing.
 
-=cut 
+=cut
 
 sub ctrl {
   $_[0] ^ (($_[0]>=ord('a') && $_[0]<=ord('z')) ? 0x60 : 0x40);
@@ -1517,7 +1517,7 @@ to reach CPAN. Falling back to 'stty'.
         If you do not want to see this warning, set PERL_READLINE_NOWARN
 in your environment.
 EOW
-                                        # '; # For Emacs. 
+                                        # '; # For Emacs.
      $useioctl = 0;
      system 'stty raw -echo' and ($usestty = 0, die "Cannot call `stty': $!");
      if ($^O eq 'MSWin32') {
@@ -1647,7 +1647,7 @@ I<Note>: If an argument is given, it is used instead of the prompt.
 
 This is some nasty code.
 
-=cut 
+=cut
 
 sub redisplay
 {
@@ -1791,7 +1791,7 @@ sub redisplay
         if ($lastredisplay eq $dline and $lastpromptlen == length $prompt) {
             ## If we need to move forward, just overwrite as far as we need.
             if ($lastdelta < $delta) {
-                print $term_OUT 
+                print $term_OUT
                   substr_with_props($prompt, $dline,
                                     $lastdelta, $delta-$lastdelta, $have_ket);
             ## Need to move back.
@@ -1870,7 +1870,7 @@ sub getc_with_pending {
 sub rl_getc {
           my $key;                        # JP: Added missing declaration
           if (defined $term_readkey) { # XXXX ???
-            $Term::ReadLine::Perl5::term->Tk_loop 
+            $Term::ReadLine::Perl5::term->Tk_loop
               if $Term::ReadLine::toloop && defined &Tk::DoOneEvent;
             $key = Term::ReadKey::ReadKey(0, $term_IN);
           } else {
@@ -1878,7 +1878,7 @@ sub rl_getc {
           }
 }
 
-=head2 get_command 
+=head2 get_command
 
 C<get_command(*keymap, $ord_command_char)>
 
@@ -1886,7 +1886,7 @@ If the C<*keymap>) has an entry for C<$ord_command_char>, it is returned.
 Otherwise, the default command in C<$Keymap{'default'}> is returned if that
 exists. If C<$Keymap{'default'}> is false, C<'F_Ding'> is returned.
 
-=cut 
+=cut
 
 sub get_command
 {
@@ -1908,7 +1908,7 @@ C<do_command(*keymap, $numericarg, $key)>
 If the C<*keymap> has an entry for C<$key>, it is executed.
 Otherwise, the default command for the keymap is executed.
 
-=cut 
+=cut
 
 sub do_command
 {
@@ -1939,7 +1939,7 @@ sub savestate
 
 C<preserve_tate()>
 
-=cut 
+=cut
 
 sub preserve_state {
     return if $Vi_mode;
@@ -1982,7 +1982,7 @@ sub F_SelfInsert
 
 Return the line as-is to the user.
 
-=cut 
+=cut
 
 sub F_AcceptLine
 {
@@ -2004,7 +2004,7 @@ Insert into history list if:
 
 bigger than the minimal length
 
-=item * 
+=item *
 
 not same as last entry
 
@@ -2014,7 +2014,7 @@ not same as last entry
 
 sub add_line_to_history
 {
-    if (length($line) >= $minlength 
+    if (length($line) >= $minlength
         && (!@rl_History || $rl_History[$#rl_History] ne $line)
        ) {
         ## if the history list is full, shift out an old one first....
@@ -2132,7 +2132,7 @@ sub islower { ord($_[0]) >= ord('a') && ord($_[0]) <= ord('z'); }
 sub toupper { &islower ? pack('c', ord($_[0])-ord('a')+ord('A')) : $_[0];}
 sub tolower { &isupper ? pack('c', ord($_[0])-ord('A')+ord('a')) : $_[0];}
 
-=head2 rl_set 
+=head2 rl_set
 
 C<rl_set($var_name, $value_string)>
 
@@ -2183,7 +2183,7 @@ sub rl_set
     local($return) = undef;
     s/-(.)/\u$1/g;
 
-    # Skip unknown variables: 
+    # Skip unknown variables:
     return unless defined $ {'readline::'}{"var_$_"};
     local(*V);    # avoid <Undefined value assign to typeglob> warning
     { local $^W; *V = $ {'readline::'}{"var_$_"}; }
@@ -2209,7 +2209,7 @@ C<OnSecondByte($index)>
 Returns true if the byte at C<$index> into C<$line> is the second byte
 of a two-byte character.
 
-=cut 
+=cut
 
 sub OnSecondByte
 {
@@ -2239,20 +2239,23 @@ sub OnSecondByte
 C<CharSize($index)>
 
 Returns the size of the character at the given C<$index> in the
-current line.  Most characters are just one byte in length,
-but if the byte at the index and the one after has the high
-bit set those two bytes are one character of size=2.
+current line.  Most characters are just one byte in length.  However,
+if the byte at the index and the one after both have the high bit set
+and $_rl_japanese_mb is set, those two bytes are one character of size
+two.
 
 Assumes that C<$index> points to the first of a 2-byte char if not
-pointing to a 2-byte char.
+pointing to a 1-byte char.
 
-=cut 
+TODO: handle Unicode
 
+=cut
 sub CharSize
 {
+    my $index = shift;
     return 2 if $_rl_japanese_mb &&
-                ord(substr($line, $_[0],   1)) >= 0x80 &&
-                ord(substr($line, $_[0]+1, 1)) >= 0x80;
+                ord(substr($line, $index,   1)) >= 0x80 &&
+                ord(substr($line, $index+1, 1)) >= 0x80;
     1;
 }
 
@@ -2442,7 +2445,7 @@ sub F_ForwardWord
 }
 
 ##
-## 
+##
 ## Move to the beginning of this/next word.
 ## Done as many times as $count says.
 ##
@@ -2718,7 +2721,7 @@ sub F_HistorySearchForward
 }
 
 ## returns a new $i or -1 if not found.
-sub search { 
+sub search {
   my ($i, $str) = @_;
   return -1 if $i < 0 || $i > $#rl_History;      ## for safety
   while (1) {
@@ -2801,7 +2804,7 @@ sub DoSearch
 }
 
 ## returns a new $i or -1 if not found.
-sub searchStart { 
+sub searchStart {
   my ($i, $reverse, $str) = @_;
   $i += $reverse ? - 1: +1;
   return -1 if $i < 0 || $i > $#rl_History;  ## for safety
@@ -3403,7 +3406,7 @@ sub F_ViAcceptLine
 
 # Repeat the most recent one of these vi commands:
 #
-#   a A c C d D i I p P r R s S x X ~ 
+#   a A c C d D i I p P r R s S x X ~
 #
 sub F_ViRepeatLastCommand {
     my($count) = @_;
@@ -3857,7 +3860,7 @@ sub F_ViSearch {
     }
     else {
         # Convert to a regular expression.  Interpret $str Like vi in nomagic
-        #     mode: '^', '$', '\<', and '\>' positional assertions, '\*' 
+        #     mode: '^', '$', '\<', and '\>' positional assertions, '\*'
         #     quantifier, '\.' and '\[]' character classes.
 
         my @chars = ($str =~ m{(\\?.)}g);
@@ -3905,7 +3908,7 @@ sub F_ViRepeatSearch {
 }
 
 ## returns a new $i or -1 if not found.
-sub vi_search { 
+sub vi_search {
     my ($i) = @_;
     return -1 if $i < 0 || $i > $#rl_History;    ## for safety
     while (1) {
@@ -4503,7 +4506,7 @@ I can't spell, so comments riddled with misspellings.
 =item *
 Written by someone that has never really used readline.
 
-=item * 
+=item *
 History mechanism is slightly different than GNU... may get
 fixed someday, but I like it as it is now...
 
@@ -4531,7 +4534,7 @@ Some notable internal-only variables of global proportions:
 
 =over
 
-=item  C<$prompt> 
+=item  C<$prompt>
 line prompt (passed from user)
 
 =item  C<$line>
@@ -4616,7 +4619,7 @@ info about how these set'able variables work.
 =item C<$var_EditingMode>
 a keymap typeglob like C<%emacs_keymap> or C<%vi_keymap>
 
-=item C<$var_TcshCompleteMode> 
+=item C<$var_TcshCompleteMode>
 If true, the completion function works
 like in tcsh.  That is, the first time you try to complete something,
 the common prefix is completed for you. Subsequent completion tries
@@ -4632,7 +4635,7 @@ Some variables used internally, but may be accessed from outside...
 
 =over
 
-=item C<$VERSION> 
+=item C<$VERSION>
 Version of this package. It is used up by C<../Makefile.PL>
 
 =item C<$rl_readline_name>
@@ -4695,11 +4698,11 @@ maximum numeric arg allowed.
 
 =item C<$rl_vi_replace_default_on_insert>
 Normally, the text you enter is added to any default text passed to
-readline.  If this variable is true, default text will start out 
-highlighted (if supported by your terminal) and text entered while the 
-default is highlighted (during the _first_ insert mode only) will 
-replace the entire default line.  Once you have left insert mode (hit 
- escape), everything works as normal.  
+readline.  If this variable is true, default text will start out
+highlighted (if supported by your terminal) and text entered while the
+default is highlighted (during the _first_ insert mode only) will
+replace the entire default line.  Once you have left insert mode (hit
+ escape), everything works as normal.
 
 This behavior similar to many GUI controls' behavior, which select the
 default text so that new text replaces the old.
@@ -4776,7 +4779,7 @@ for two commands:
 It (untested) might look like:
 
     $readline::rl_completion_function = "main::complete";
-    sub complete { 
+    sub complete {
         local($text, $_, $start) = @_;
         ## return commands which may match if at the beginning....
         return grep(/^$text/, 'cat', 'finger') if $start == 0;
