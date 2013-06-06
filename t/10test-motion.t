@@ -11,7 +11,7 @@ BEGIN {
 
 require 'Term/ReadLine/readline.pm';
 
-# stop reading ~/.inputrc
+xo# stop reading ~/.inputrc
 $ENV{'INPUTRC'} = '/dev/null';
 
 note("CharSize()");

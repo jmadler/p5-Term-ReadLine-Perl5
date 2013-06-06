@@ -2129,8 +2129,6 @@ __DATA__
 sub max     { $_[0] > $_[1] ? $_[0] : $_[1]; }
 sub isupper { ord($_[0]) >= ord('A') && ord($_[0]) <= ord('Z'); }
 sub islower { ord($_[0]) >= ord('a') && ord($_[0]) <= ord('z'); }
-sub toupper { &islower ? pack('c', ord($_[0])-ord('a')+ord('A')) : $_[0];}
-sub tolower { &isupper ? pack('c', ord($_[0])-ord('A')+ord('a')) : $_[0];}
 
 =head2 rl_set
 
@@ -2595,7 +2593,7 @@ sub F_CapitalizeWord { &changecase($_[0], 'cap');  }
 ## Translated from GNUs readline.c
 ## One arg is 'up' to upcase $_[0] words,
 ##            'down' to downcase them,
-##         or something else to capitolize them.
+##         or something else to capitalize them.
 ## If $_[0] is negative, the dot is not moved.
 ##
 sub changecase
@@ -2615,14 +2613,14 @@ sub changecase
         $c = substr($line, $start, 1);
 
         if ($op eq 'up') {
-            $c = &toupper($c);
+            $c = uc $c;
         } elsif ($op eq 'down') {
-            $c = &tolower($c);
+            $c = lc $c;
         } else { ## must be 'cap'
             if ($state == 1) {
-                $c = &tolower($c);
+                $c = lc $c;
             } else {
-                $c = &toupper($c);
+                $c = uc $c;
                 $state = 1;
             }
             $state = 0 if $c !~ tr/a-zA-Z//;
