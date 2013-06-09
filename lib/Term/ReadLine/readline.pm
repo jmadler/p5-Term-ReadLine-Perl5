@@ -1654,6 +1654,7 @@ sub redisplay
 {
     ## local $line has prompt also; take that into account with $D.
     local($prompt) = defined($_[0]) ? $_[0] : $prompt;
+    $prompt = '' unless defined($prompt);
     my ($thislen, $have_bra);
     my($dline) = $prompt . $line;
     local($D) = $D + length($prompt);
@@ -1764,7 +1765,7 @@ sub redisplay
     }
     if ($si >= length($prompt)) { # Keep $dline for $lastredisplay...
       $prompt = ($have_bra ? "<" : "");
-      $dline = substr $dline, 1;        # After prompt
+      $dline = substr $dline, 1 if length($dline); # After prompt
       $bsel = 1 if defined $bsel and $bsel == 0;
     } else {
       $dline = substr($dline, (length $prompt) - $si);
@@ -1839,7 +1840,7 @@ sub redisplay
     print $term_OUT "\r", substr_with_props($prompt, $dline, 0, undef, $have_ket, $bsel, $esel);
     my $back = length ($dline) + length ($prompt) - $delta;
     $back += $lastlen - $thislen,
-        print $term_OUT ' ' x ($lastlen - $thislen) if $lastlen > $thislen;
+        print $term_OUT ' ' x ($lastlen - $thislen) if $lastlen and $lastlen > $thislen;
 
     if ($back) {
         my $out = substr_with_props($prompt, $dline, 0, $delta, $have_ket, $bsel, $esel);

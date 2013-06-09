@@ -10,13 +10,13 @@ use Term::ReadLine;
 use Carp;
 $SIG{__WARN__} = sub { warn Carp::longmess(@_) };
 
-my $non_interactive = 
+my $non_interactive =
     (defined($ENV{PERL_MM_NONINTERACTIVE}))
-    ? $ENV{PERL_MM_NONINTERACTIVE} : 
+    ? $ENV{PERL_MM_NONINTERACTIVE} :
      ($ENV{PERL_MM_USE_DEFAULT} || $ENV{AUTOMATED_TESTING});
 if ($non_interactive) {
     no strict; no warnings;
-    print "1..0 # skip: not interactive; " . 
+    print "1..0 # skip: not interactive; " .
     "\$ENV{PERL_MM_NONINTERACTIVE}='$ENV{PERL_MM_NONINTERCTIVE}' \$ENV{AUTOMATED_TESTING}='$ENV{AUTOMATED_TESTING}'\n";
   exit;
 }
@@ -57,10 +57,16 @@ print $OUT <<EOP;
 	this word should be already entered.)
 
 EOP
+
 while ( defined ($_ = $term->readline($prompt, "exit")) ) {
   $res = eval($_);
-  warn $@ if $@;
-  print $OUT $res, "\n" unless $@ or $no_print;
+  if ($@) {
+     warn $@ ;
+  } elsif (defined($res)) {
+      print $OUT $res, "\n" unless $no_print;
+  } else {
+      print $OUT "expression evaluated to undef\n";
+  }
   $term->addhistory($_) if /\S/ and !$features{autohistory};
   $readline::rl_default_selected = !$readline::rl_default_selected;
 }
