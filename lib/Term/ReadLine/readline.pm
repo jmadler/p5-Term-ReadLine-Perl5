@@ -55,7 +55,7 @@ use vars qw(@KeyMap %KeyMap $rl_screen_width $rl_start_default_at_beginning
 # my ($hook, %var_HorizontalScrollMode, %var_EditingMode, %var_OutputMeta);
 # my ($var_HorizontalScrollMode, $var_EditingMode, $var_OutputMeta);
 # my (%var_ConvertMeta, $var_ConvertMeta, %var_MarkModifiedLines, $var_MarkModifiedLines);
-# my ($term_readkey, $inDOS);
+my ($term_readkey, $inDOS);
 # my (%var_PreferVisibleBell, $var_PreferVisibleBell);
 # my (%var_TcshCompleteMode, $var_TcshCompleteMode);
 # my (%var_CompleteAddsuffix, $var_CompleteAddsuffix);
@@ -70,7 +70,7 @@ use vars qw(@KeyMap %KeyMap $rl_screen_width $rl_start_default_at_beginning
 #     $TERMIOS_VMIN, $TERMIOS_VTIME, $TIOCGETP, $TIOCGWINSZ, $TIOCSETP,
 #     $fion, $fionread_t, $mode, $sgttyb_t,
 #     $termios, $termios_t, $winsz, $winsz_t);
-# my ($line, $initialized, $term_readkey);
+# my ($line, $initialized);
 #
 # Global variables added for vi mode (I'm leaving them all commented
 # out, like the declarations above, until SelfLoader issues
@@ -2910,22 +2910,31 @@ sub F_Abort
 }
 
 
-##
-## If the character that got us here is upper case,
-## do the lower-case equiv...
-##
+=head2 F_DoLowercaseVersion
+
+If the character that got us here is upper case,
+do the lower-case equivalent command.
+
+=cut
+
 sub F_DoLowercaseVersion
 {
-    if ($_[1] >= ord('A') && $_[1] <= ord('Z')) {
-        &do_command(*KeyMap, $_[0], $_[1] - ord('A') + ord('a'));
+    my $c = $_[1];
+    if (isupper($c)) {
+        &do_command(*KeyMap, $_[0], lc($c));
     } else {
         &F_Ding;
     }
 }
 
-##
-## do the equiv with control key...
-##
+=head2 F_DoControlVersion
+
+do the equiv with control key...
+If the character that got us here is upper case,
+do the lower-case equivalent command.
+
+=cut
+
 sub F_DoControlVersion
 {
     local *KeyMap = $var_EditingMode;
@@ -2939,9 +2948,12 @@ sub F_DoControlVersion
     &do_command(*KeyMap, $_[0], $key);
 }
 
-##
-## do the equiv with meta key...
-##
+=head2 F_DoMetaVersion
+
+do the equiv with meta key...
+
+=cut
+
 sub F_DoMetaVersion
 {
     local *KeyMap = $var_EditingMode;
@@ -2950,10 +2962,13 @@ sub F_DoMetaVersion
     &do_command(*KeyMap, $_[0], ord "\e");
 }
 
-##
-## If the character that got us here is Alt-Char,
-## do the Esc Char equiv...
-##
+=head2 F_DoEscVersion
+
+If the character that got us here is Alt-Char,
+do the Esc Char equiv...
+
+=cut
+
 sub F_DoEscVersion
 {
     my ($ord, $t) = $_[1];
@@ -2969,9 +2984,13 @@ sub F_DoEscVersion
     &F_Ding;
 }
 
-##
-## Undo one level.
-##
+=head2 F_Undo
+
+Undo one level.
+
+
+=cut
+
 sub F_Undo
 {
     pop(@undo); # unless $undo[-1]->[5]; ## get rid of the state we just put on, so we can go back one.
@@ -2982,9 +3001,12 @@ sub F_Undo
     }
 }
 
-##
-## Replace the current line to some "before" state.
-##
+=head2 F_RevertLine
+
+Replace the current line to some "before" state.
+
+=cut
+
 sub F_RevertLine
 {
     if ($rl_HistoryIndex >= $#rl_History+1) {
