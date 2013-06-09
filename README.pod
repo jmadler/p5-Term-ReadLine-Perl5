@@ -1,4 +1,4 @@
-=for comment This file is shared by both README.pod and Perl.pm 
+=for comment This file is shared by both README.pod and Perl.pm
 after its __END__ It might also be on github:
 https://github.com/jmadler/p5-Term-ReadLine-Perl5
 
@@ -16,8 +16,6 @@ Term::ReadLine::Perl5 - A pure Perl implementation GNU Readline
 
 =head1 DESCRIPTION
 
-=head2 Overview
-
 This is a implementation of the GNU Readline/History Library written
 entirely in Perl.
 
@@ -28,6 +26,8 @@ history of previous input.
 This package typically used in command-line interfaces and REPLs (Read,
 Eval, Print Loops).
 
+See also L<Term::ReadLine::p5Commentary>
+
 =head1 INSTALL
 
 To install this module type:
@@ -35,7 +35,7 @@ To install this module type:
     perl Makefile.PL
     make
     # for interactive testing:
-    make test 
+    make test
     # for non-interactive testing
     AUTOMATED_TESTING=1 make test
     make install # might need sudo make install
