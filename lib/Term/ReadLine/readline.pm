@@ -1,5 +1,5 @@
 # -*- Perl -*-
-# POD doc after __END__
+=pod
 
 =head1 NAME
 
@@ -7,7 +7,7 @@ Term::ReadLine::readline
 
 =head1 DESCRIPTION
 
-Wraps what was initially Perl4 and now partially Perl4) into a fake
+Wraps what was initially Perl4 (and now partially Perl4) into a fake
 Perl5 pseudo-module.
 
 The mismatch of the package name, C<readline> and file name
@@ -16,24 +16,17 @@ this (very fragile) code...
 
 =cut
 
-### TO DO: 
-#
-# * Use of File::HomeDir instead of $ENV{HOME} #8119 
-#
-# * rl_scroll_nextline inserts line full of spaces into the output before 
-#   the prompt #75743 
-#
-# * replace eval() wiht hex() and oct() #59194
-###
-
+use warnings;
 package readline;
 
-my $autoload_broken = 1;	# currently: defined does not work with a-l
+use Term::ReadLine;  # For Term::ReadLine::TermCap::ornaments
+
+my $autoload_broken = 1;        # currently: defined does not work with a-l
 my $useioctl = 1;
 my $usestty = 1;
 my $max_include_depth = 10;     # follow $include's in init files this deep
 
-BEGIN {			# Some old systems have ioctl "unsupported"
+BEGIN {                 # Some old systems have ioctl "unsupported"
   *ioctl = sub ($$$) { eval { ioctl $_[0], $_[1], $_[2] } };
 }
 
@@ -49,20 +42,20 @@ $rl_getc = \&rl_getc;
 #
 # # Separation into my and vars needs some thought...
 #
-# use vars qw(@KeyMap %KeyMap $rl_screen_width $rl_start_default_at_beginning
-# 	    $rl_completion_function $rl_basic_word_break_characters
-# 	    $rl_completer_word_break_characters $rl_special_prefixes
-# 	    $rl_readline_name @rl_History $rl_MaxHistorySize
-#             $rl_max_numeric_arg $rl_OperateCount
-# 	    $KillBuffer $dumb_term $stdin_not_tty $InsertMode 
-# 	    $rl_NoInitFromFile);
+use vars qw(@KeyMap %KeyMap $rl_screen_width $rl_start_default_at_beginning
+          $rl_completion_function $rl_basic_word_break_characters
+          $rl_completer_word_break_characters $rl_special_prefixes
+          $rl_readline_name @rl_History $rl_MaxHistorySize
+          $rl_max_numeric_arg $rl_OperateCount
+          $KillBuffer $dumb_term $stdin_not_tty $InsertMode
+          $rl_NoInitFromFile);
 #
 # my ($InputLocMsg, $term_OUT, $term_IN);
 # my ($winsz_t, $TIOCGWINSZ, $winsz, $rl_margin, $hooj, $force_redraw);
 # my ($hook, %var_HorizontalScrollMode, %var_EditingMode, %var_OutputMeta);
 # my ($var_HorizontalScrollMode, $var_EditingMode, $var_OutputMeta);
 # my (%var_ConvertMeta, $var_ConvertMeta, %var_MarkModifiedLines, $var_MarkModifiedLines);
-# my ($term_readkey, $inDOS);
+my ($term_readkey, $inDOS);
 # my (%var_PreferVisibleBell, $var_PreferVisibleBell);
 # my (%var_TcshCompleteMode, $var_TcshCompleteMode);
 # my (%var_CompleteAddsuffix, $var_CompleteAddsuffix);
@@ -70,70 +63,70 @@ $rl_getc = \&rl_getc;
 # my ($BRKINT, $ECHO, $FIONREAD, $ICANON, $ICRNL, $IGNBRK, $IGNCR, $INLCR,
 #     $ISIG, $ISTRIP, $NCCS, $OPOST, $RAW, $TCGETS, $TCOON, $TCSETS, $TCXONC,
 #     $TERMIOS_CFLAG, $TERMIOS_IFLAG, $TERMIOS_LFLAG, $TERMIOS_NORMAL_IOFF,
-#     $TERMIOS_NORMAL_ION, $TERMIOS_NORMAL_LOFF, $TERMIOS_NORMAL_LON, 
-#     $TERMIOS_NORMAL_OOFF, $TERMIOS_NORMAL_OON, $TERMIOS_OFLAG, 
-#     $TERMIOS_READLINE_IOFF, $TERMIOS_READLINE_ION, $TERMIOS_READLINE_LOFF, 
-#     $TERMIOS_READLINE_LON, $TERMIOS_READLINE_OOFF, $TERMIOS_READLINE_OON, 
-#     $TERMIOS_VMIN, $TERMIOS_VTIME, $TIOCGETP, $TIOCGWINSZ, $TIOCSETP, 
-#     $fion, $fionread_t, $mode, $sgttyb_t, 
+#     $TERMIOS_NORMAL_ION, $TERMIOS_NORMAL_LOFF, $TERMIOS_NORMAL_LON,
+#     $TERMIOS_NORMAL_OOFF, $TERMIOS_NORMAL_OON, $TERMIOS_OFLAG,
+#     $TERMIOS_READLINE_IOFF, $TERMIOS_READLINE_ION, $TERMIOS_READLINE_LOFF,
+#     $TERMIOS_READLINE_LON, $TERMIOS_READLINE_OOFF, $TERMIOS_READLINE_OON,
+#     $TERMIOS_VMIN, $TERMIOS_VTIME, $TIOCGETP, $TIOCGWINSZ, $TIOCSETP,
+#     $fion, $fionread_t, $mode, $sgttyb_t,
 #     $termios, $termios_t, $winsz, $winsz_t);
-# my ($line, $initialized, $term_readkey);
+# my ($line, $initialized);
 #
-# # Global variables added for vi mode (I'm leaving them all commented
-# # out, like the declarations above, until SelfLoader issues
-# #     are resolved).
-#
-# # True when we're in one of the vi modes.
-# # my $Vi_mode;
-#
-# # Array refs: saves keystrokes for '.' command.  Undefined when we're
-# #     not doing a '.'-able command.
-# my $Dot_buf;                # Working buffer
-# my $Last_vi_command;        # Gets $Dot_buf when a command is parsed
-#
-# # These hold state for vi 'u' and 'U'.
-# my($Dot_state, $Vi_undo_state, $Vi_undo_all_state);
-#
-# # Refs to hashes used for cursor movement
-# my($Vi_delete_patterns, $Vi_move_patterns,
-#    $Vi_change_patterns, $Vi_yank_patterns);
-#
-# # Array ref: holds parameters from the last [fFtT] command, for ';'
-# #     and ','.
-# my $Last_findchar;
-#
-# # Globals for history search commands (/, ?, n, N)
-# my $Vi_search_re;       # Regular expression (compiled by qr{})
-# my $Vi_search_reverse;  # True for '?' search, false for '/'
+# Global variables added for vi mode (I'm leaving them all commented
+# out, like the declarations above, until SelfLoader issues
+#     are resolved).
+
+# True when we're in one of the vi modes.
+my $Vi_mode;
+
+# Array refs: saves keystrokes for '.' command.  Undefined when we're
+#     not doing a '.'-able command.
+my $Dot_buf;                # Working buffer
+my $Last_vi_command;        # Gets $Dot_buf when a command is parsed
+
+# These hold state for vi 'u' and 'U'.
+my($Dot_state, $Vi_undo_state, $Vi_undo_all_state);
+
+# Refs to hashes used for cursor movement
+my($Vi_delete_patterns, $Vi_move_patterns,
+   $Vi_change_patterns, $Vi_yank_patterns);
+
+# Array ref: holds parameters from the last [fFtT] command, for ';'
+#     and ','.
+my $Last_findchar;
+
+# Globals for history search commands (/, ?, n, N)
+my $Vi_search_re;       # Regular expression (compiled by qr{})
+my $Vi_search_reverse;  # True for '?' search, false for '/'
 
 =head1 SUBROUTINES
-=cut 
+=cut
 
 sub get_window_size
 {
     my $sig = shift;
-    local($., $@, $!, $^E, $?);		# Preserve $! etc; the rest for hooks
+    local($., $@, $!, $^E, $?);         # Preserve $! etc; the rest for hooks
     my ($num_cols,$num_rows);
 
     if (defined $term_readkey) {
-	 ($num_cols,$num_rows) =  Term::ReadKey::GetTerminalSize($term_OUT);
-	 $rl_screen_width = $num_cols - $rl_correct_sw
-	   if defined($num_cols) && $num_cols;
+         ($num_cols,$num_rows) =  Term::ReadKey::GetTerminalSize($term_OUT);
+         $rl_screen_width = $num_cols - $rl_correct_sw
+           if defined($num_cols) && $num_cols;
     } elsif (defined $TIOCGWINSZ and &ioctl($term_IN,$TIOCGWINSZ,$winsz)) {
-	 ($num_rows,$num_cols) = unpack($winsz_t,$winsz);
-	 $rl_screen_width = $num_cols - $rl_correct_sw
-	   if defined($num_cols) && $num_cols;
+         ($num_rows,$num_cols) = unpack($winsz_t,$winsz);
+         $rl_screen_width = $num_cols - $rl_correct_sw
+           if defined($num_cols) && $num_cols;
     }
     $rl_margin = int($rl_screen_width/3);
     if (defined $sig) {
-	$force_redraw = 1;
-	&redisplay();
+        $force_redraw = 1;
+        &redisplay();
     }
 
     for $hook (@winchhooks) {
       eval {&$hook()}; warn $@ if $@ and $^W;
     }
-    local $^W = 0;		# WINCH may be illegal...
+    local $^W = 0;              # WINCH may be illegal...
     $SIG{'WINCH'} = "readline::get_window_size";
 }
 
@@ -174,19 +167,19 @@ sub preinit
 
     ## not yet supported... always on
     for ('InputMeta', 'OutputMeta') {
-	${"var_$_"} = 1;
-	${"var_$_"}{'Off'} = 0;
-	${"var_$_"}{'On'} = 1;
+        ${"var_$_"} = 1;
+        ${"var_$_"}{'Off'} = 0;
+        ${"var_$_"}{'On'} = 1;
     }
 
     ## not yet supported... always off
     for ('ConvertMeta', 'MetaFlag', 'MarkModifiedLines', 'PreferVisibleBell',
-	 'BlinkMatchingParen', 'VisibleStats', 'ShowAllIfAmbiguous',
-	 'PrintCompletionsHorizontally', 'MarkDirectories', 'ExpandTilde',
-	 'EnableKeypad', 'DisableCompletion', 'CompletionIgnoreCase') {
-	${"var_$_"} = 0;
-	${"var_$_"}{'Off'} = 0;
-	${"var_$_"}{'On'} = 1;
+         'BlinkMatchingParen', 'VisibleStats', 'ShowAllIfAmbiguous',
+         'PrintCompletionsHorizontally', 'MarkDirectories', 'ExpandTilde',
+         'EnableKeypad', 'DisableCompletion', 'CompletionIgnoreCase') {
+        ${"var_$_"} = 0;
+        ${"var_$_"}{'Off'} = 0;
+        ${"var_$_"}{'On'} = 1;
     }
 
     # To conform to interface
@@ -199,19 +192,19 @@ sub preinit
     eval {
       require Term::ReadKey; $term_readkey++;
     } unless defined $ENV{PERL_RL_USE_TRK}
-	     and not $ENV{PERL_RL_USE_TRK};
+             and not $ENV{PERL_RL_USE_TRK};
     unless ($term_readkey) {
       eval {require "ioctl.pl"}; ## try to get, don't die if not found.
       eval {require "sys/ioctl.ph"}; ## try to get, don't die if not found.
       eval {require "sgtty.ph"}; ## try to get, don't die if not found.
       if ($inDOS and !defined $TIOCGWINSZ) {
-	  $TIOCGWINSZ=0;
-	  $TIOCGETP=1;
-	  $TIOCSETP=2;
-	  $sgttyb_t="I5 C8";
-	  $winsz_t="";
-	  $RAW=0xf002;
-	  $ECHO=0x0008;
+          $TIOCGWINSZ=0;
+          $TIOCGETP=1;
+          $TIOCSETP=2;
+          $sgttyb_t="I5 C8";
+          $winsz_t="";
+          $RAW=0xf002;
+          $ECHO=0x0008;
       }
       $TIOCGETP = &TIOCGETP if defined(&TIOCGETP);
       $TIOCSETP = &TIOCSETP if defined(&TIOCSETP);
@@ -231,8 +224,8 @@ sub preinit
       ## TTY modes
       $ECHO = &ECHO if defined(&ECHO);
       $RAW = &RAW if defined(&RAW);
-      $RAW	= 040 if !defined($RAW);
-      $ECHO	= 010 if !defined($ECHO);
+      $RAW      = 040 if !defined($RAW);
+      $ECHO     = 010 if !defined($ECHO);
       #$CBREAK    = 002 if !defined($CBREAK);
       $mode = $RAW; ## could choose CBREAK for testing....
 
@@ -262,18 +255,18 @@ sub preinit
       #$sgttyb_t   = 'C4 S';
       #$winsz_t = "S S S S";  # rows,cols, xpixel, ypixel
       $sgttyb_t   = 'C4 S' if !defined($sgttyb_t);
-      $winsz_t = "S S S S" if !defined($winsz_t);  
+      $winsz_t = "S S S S" if !defined($winsz_t);
       # rows,cols, xpixel, ypixel
       $winsz = pack($winsz_t,0,0,0,0);
-      $fionread_t = "L";
-      $fion = pack($fionread_t, 0);
+      ## $fionread_t = "L";
+      ## $fion = pack($fionread_t, 0);
       $NCCS = 17;
       $termios_t = "LLLLc" . ("c" x $NCCS);  # true for SunOS 4.1.3, at least...
       $termios = ''; ## just to shut up "perl -w".
       $termios = pack($termios, 0);  # who cares, just make it long enough
       $TERMIOS_IFLAG = 0;
       $TERMIOS_OFLAG = 1;
-      $TERMIOS_CFLAG = 2;
+      ## $TERMIOS_CFLAG = 2;
       $TERMIOS_LFLAG = 3;
       $TERMIOS_VMIN = 5 + 4;
       $TERMIOS_VTIME = 5 + 5;
@@ -281,7 +274,7 @@ sub preinit
     $rl_delete_selection = 1;
     $rl_correct_sw = ($inDOS ? 1 : 0);
     $rl_scroll_nextline = 1 unless defined $rl_scroll_nextline;
-    $rl_last_pos_can_backspace = ($inDOS ? 0 : 1) # Can backspace when the 
+    $rl_last_pos_can_backspace = ($inDOS ? 0 : 1) # Can backspace when the
       unless defined $rl_last_pos_can_backspace;  # whole line is filled?
 
     $rl_start_default_at_beginning = 0;
@@ -289,7 +282,7 @@ sub preinit
     $rl_screen_width = 79; ## default
 
     $rl_completion_function = "rl_filename_list"
-	unless defined($rl_completion_function);
+        unless defined($rl_completion_function);
     $rl_basic_word_break_characters = "\\\t\n' \"`\@\$><=;|&{(";
     $rl_completer_word_break_characters = $rl_basic_word_break_characters;
     $rl_special_prefixes = '';
@@ -310,435 +303,435 @@ sub preinit
     $InputLocMsg = ' [initialization]';
 
     &InitKeymap(*emacs_keymap, 'SelfInsert', 'emacs_keymap',
-		($inDOS ? () : ('C-@',	'SetMark') ),
-		'C-a',	'BeginningOfLine',
-		'C-b',	'BackwardChar',
-		'C-c',	'Interrupt',
-		'C-d',	'DeleteChar',
-		'C-e',	'EndOfLine',
-		'C-f',	'ForwardChar',
-		'C-g',	'Abort',
-		'M-C-g',	'Abort',
-		'C-h',	'BackwardDeleteChar',
-		"TAB" ,	'Complete',
-		"C-j" ,	'AcceptLine',
-		'C-k',	'KillLine',
-		'C-l',	'ClearScreen',
-		"C-m" ,	'AcceptLine',
-		'C-n',	'NextHistory',
-		'C-o',  'OperateAndGetNext',
-		'C-p',	'PreviousHistory',
-		'C-q',	'QuotedInsert',
-		'C-r',	'ReverseSearchHistory',
-		'C-s',	'ForwardSearchHistory',
-		'C-t',	'TransposeChars',
-		'C-u',	'UnixLineDiscard',
-		##'C-v',	'QuotedInsert',
-		'C-v',	'HistorySearchForward',
-		'C-w',	'UnixWordRubout',
-		qq/"\cX\cX"/,	'ExchangePointAndMark',
-		qq/"\cX\cR"/,	'ReReadInitFile',
-		qq/"\cX?"/,	'PossibleCompletions',
-		qq/"\cX*"/,	'InsertPossibleCompletions',
-		qq/"\cX\cU"/,	'Undo',
-		qq/"\cXu"/,	'Undo',
-		qq/"\cX\cW"/,	'KillRegion',
-		qq/"\cXw"/,	'CopyRegionAsKill',
-		qq/"\cX\ec\\*"/,	'DoControlVersion',
-		qq/"\cX\ec\0"/,	'SetMark',
-		qq/"\cX\ec\@"/,	'SetMark',
-		qq/"\cX\ec "/,	'SetMark',
-		qq/"\cX\em\\*"/,	'DoMetaVersion',
-		qq/"\cX\@c\\*"/,	'DoControlVersion',
-		qq/"\cX\@c\0"/,	'SetMark',
-		qq/"\cX\@c\@"/,	'SetMark',
-		qq/"\cX\@c "/,	'SetMark',
-		qq/"\cX\@m\\*"/,	'DoMetaVersion',
-		'C-y',	'Yank',
-		'C-z',	'Suspend',
-		'C-\\',	'Ding',
-		'C-^',	'Ding',
-		'C-_',	'Undo',
-		'DEL',	($inDOS ?
-			 'BackwardKillWord' : # <Control>+<Backspace>
-			 'BackwardDeleteChar'
-			),
-		'M-<',	'BeginningOfHistory',
-		'M->',	'EndOfHistory',
-		'M-DEL',	'BackwardKillWord',
-		'M-C-h',	'BackwardKillWord',
-		'M-C-j',	'ViInput',
-		'M-C-v',	'QuotedInsert',
-		'M-b',	'BackwardWord',
-		'M-c',	'CapitalizeWord',
-		'M-d',	'KillWord',
-		'M-f',	'ForwardWord',
-		'M-h',	'PrintHistory',
-		'M-l',	'DownCaseWord',
-		'M-r',	'RevertLine',
-		'M-t',	'TransposeWords',
-		'M-u',	'UpcaseWord',
-		'M-v',	'HistorySearchBackward',
-		'M-y',	'YankPop',
-		"M-?",	'PossibleCompletions',
-		"M-TAB",	'TabInsert',
-		'M-#',	'SaveLine',
-		qq/"\e[A"/,  'previous-history',
-		qq/"\e[B"/,  'next-history',
-		qq/"\e[C"/,  'forward-char',
-		qq/"\e[D"/,  'backward-char',
-		qq/"\eOA"/,  'previous-history',
-		qq/"\eOB"/,  'next-history',
-		qq/"\eOC"/,  'forward-char',
-		qq/"\eOD"/,  'backward-char',
-		qq/"\eOy"/,  'HistorySearchBackward',	# vt: PageUp
-		qq/"\eOs"/,  'HistorySearchForward',	# vt: PageDown
-		qq/"\e[[A"/,  'previous-history',
-		qq/"\e[[B"/,  'next-history',
-		qq/"\e[[C"/,  'forward-char',
-		qq/"\e[[D"/,  'backward-char',
-		qq/"\e[2~"/,   'ToggleInsertMode', # X: <Insert>
-		# Mods: 1 + bitmask: 1 Shift, 2 Alt, 4 Control, 8 (sometimes) Meta
-		qq/"\e[2;2~"/,  'YankClipboard',    # <Shift>+<Insert>
-		qq/"\e[3;2~"/,  'KillRegionClipboard',    # <Shift>+<Delete>
-		#qq/"\0\16"/, 'Undo', # <Alt>+<Backspace>
-		qq/"\eO5D"/, 'BackwardWord', # <Ctrl>+<Left arrow>
-		qq/"\eO5C"/, 'ForwardWord', # <Ctrl>+<Right arrow>
-		qq/"\e[5D"/, 'BackwardWord', # <Ctrl>+<Left arrow>
-		qq/"\e[5C"/, 'ForwardWord', # <Ctrl>+<Right arrow>
-		qq/"\eO5F"/, 'KillLine', # <Ctrl>+<End>
-		qq/"\e[5F"/, 'KillLine', # <Ctrl>+<End>
-		qq/"\e[4;5~"/, 'KillLine', # <Ctrl>+<End>
-		qq/"\eO5s"/, 'EndOfHistory', # <Ctrl>+<Page Down>
-		qq/"\e[6;5~"/, 'EndOfHistory', # <Ctrl>+<Page Down>
-		qq/"\e[5H"/, 'BackwardKillLine', # <Ctrl>+<Home>
-		qq/"\eO5H"/, 'BackwardKillLine', # <Ctrl>+<Home>
-		qq/"\e[1;5~"/, 'BackwardKillLine', # <Ctrl>+<Home>
-		qq/"\eO5y"/, 'BeginningOfHistory', # <Ctrl>+<Page Up>
-		qq/"\e[5;5y"/, 'BeginningOfHistory', # <Ctrl>+<Page Up>
-		qq/"\e[2;5~"/, 'CopyRegionAsKillClipboard', # <Ctrl>+<Insert>
-		qq/"\e[3;5~"/, 'KillWord', # <Ctrl>+<Delete>
+                ($inDOS ? () : ('C-@',  'SetMark') ),
+                'C-a',  'BeginningOfLine',
+                'C-b',  'BackwardChar',
+                'C-c',  'Interrupt',
+                'C-d',  'DeleteChar',
+                'C-e',  'EndOfLine',
+                'C-f',  'ForwardChar',
+                'C-g',  'Abort',
+                'M-C-g',        'Abort',
+                'C-h',  'BackwardDeleteChar',
+                "TAB" , 'Complete',
+                "C-j" , 'AcceptLine',
+                'C-k',  'KillLine',
+                'C-l',  'ClearScreen',
+                "C-m" , 'AcceptLine',
+                'C-n',  'NextHistory',
+                'C-o',  'OperateAndGetNext',
+                'C-p',  'PreviousHistory',
+                'C-q',  'QuotedInsert',
+                'C-r',  'ReverseSearchHistory',
+                'C-s',  'ForwardSearchHistory',
+                'C-t',  'TransposeChars',
+                'C-u',  'UnixLineDiscard',
+                ##'C-v',        'QuotedInsert',
+                'C-v',  'HistorySearchForward',
+                'C-w',  'UnixWordRubout',
+                qq/"\cX\cX"/,   'ExchangePointAndMark',
+                qq/"\cX\cR"/,   'ReReadInitFile',
+                qq/"\cX?"/,     'PossibleCompletions',
+                qq/"\cX*"/,     'InsertPossibleCompletions',
+                qq/"\cX\cU"/,   'Undo',
+                qq/"\cXu"/,     'Undo',
+                qq/"\cX\cW"/,   'KillRegion',
+                qq/"\cXw"/,     'CopyRegionAsKill',
+                qq/"\cX\ec\\*"/,        'DoControlVersion',
+                qq/"\cX\ec\0"/, 'SetMark',
+                qq/"\cX\ec\@"/, 'SetMark',
+                qq/"\cX\ec "/,  'SetMark',
+                qq/"\cX\em\\*"/,        'DoMetaVersion',
+                qq/"\cX\@c\\*"/,        'DoControlVersion',
+                qq/"\cX\@c\0"/, 'SetMark',
+                qq/"\cX\@c\@"/, 'SetMark',
+                qq/"\cX\@c "/,  'SetMark',
+                qq/"\cX\@m\\*"/,        'DoMetaVersion',
+                'C-y',  'Yank',
+                'C-z',  'Suspend',
+                'C-\\', 'Ding',
+                'C-^',  'Ding',
+                'C-_',  'Undo',
+                'DEL',  ($inDOS ?
+                         'BackwardKillWord' : # <Control>+<Backspace>
+                         'BackwardDeleteChar'
+                        ),
+                'M-<',  'BeginningOfHistory',
+                'M->',  'EndOfHistory',
+                'M-DEL',        'BackwardKillWord',
+                'M-C-h',        'BackwardKillWord',
+                'M-C-j',        'ViInput',
+                'M-C-v',        'QuotedInsert',
+                'M-b',  'BackwardWord',
+                'M-c',  'CapitalizeWord',
+                'M-d',  'KillWord',
+                'M-f',  'ForwardWord',
+                'M-h',  'PrintHistory',
+                'M-l',  'DownCaseWord',
+                'M-r',  'RevertLine',
+                'M-t',  'TransposeWords',
+                'M-u',  'UpcaseWord',
+                'M-v',  'HistorySearchBackward',
+                'M-y',  'YankPop',
+                "M-?",  'PossibleCompletions',
+                "M-TAB",        'TabInsert',
+                'M-#',  'SaveLine',
+                qq/"\e[A"/,  'previous-history',
+                qq/"\e[B"/,  'next-history',
+                qq/"\e[C"/,  'forward-char',
+                qq/"\e[D"/,  'backward-char',
+                qq/"\eOA"/,  'previous-history',
+                qq/"\eOB"/,  'next-history',
+                qq/"\eOC"/,  'forward-char',
+                qq/"\eOD"/,  'backward-char',
+                qq/"\eOy"/,  'HistorySearchBackward',   # vt: PageUp
+                qq/"\eOs"/,  'HistorySearchForward',    # vt: PageDown
+                qq/"\e[[A"/,  'previous-history',
+                qq/"\e[[B"/,  'next-history',
+                qq/"\e[[C"/,  'forward-char',
+                qq/"\e[[D"/,  'backward-char',
+                qq/"\e[2~"/,   'ToggleInsertMode', # X: <Insert>
+                # Mods: 1 + bitmask: 1 Shift, 2 Alt, 4 Control, 8 (sometimes) Meta
+                qq/"\e[2;2~"/,  'YankClipboard',    # <Shift>+<Insert>
+                qq/"\e[3;2~"/,  'KillRegionClipboard',    # <Shift>+<Delete>
+                #qq/"\0\16"/, 'Undo', # <Alt>+<Backspace>
+                qq/"\eO5D"/, 'BackwardWord', # <Ctrl>+<Left arrow>
+                qq/"\eO5C"/, 'ForwardWord', # <Ctrl>+<Right arrow>
+                qq/"\e[5D"/, 'BackwardWord', # <Ctrl>+<Left arrow>
+                qq/"\e[5C"/, 'ForwardWord', # <Ctrl>+<Right arrow>
+                qq/"\eO5F"/, 'KillLine', # <Ctrl>+<End>
+                qq/"\e[5F"/, 'KillLine', # <Ctrl>+<End>
+                qq/"\e[4;5~"/, 'KillLine', # <Ctrl>+<End>
+                qq/"\eO5s"/, 'EndOfHistory', # <Ctrl>+<Page Down>
+                qq/"\e[6;5~"/, 'EndOfHistory', # <Ctrl>+<Page Down>
+                qq/"\e[5H"/, 'BackwardKillLine', # <Ctrl>+<Home>
+                qq/"\eO5H"/, 'BackwardKillLine', # <Ctrl>+<Home>
+                qq/"\e[1;5~"/, 'BackwardKillLine', # <Ctrl>+<Home>
+                qq/"\eO5y"/, 'BeginningOfHistory', # <Ctrl>+<Page Up>
+                qq/"\e[5;5y"/, 'BeginningOfHistory', # <Ctrl>+<Page Up>
+                qq/"\e[2;5~"/, 'CopyRegionAsKillClipboard', # <Ctrl>+<Insert>
+                qq/"\e[3;5~"/, 'KillWord', # <Ctrl>+<Delete>
 
-		# XTerm mouse editing (f202/f203 not in mainstream yet):
-		# Paste may be:         move f200 STRING f201
-		# or		   f202 move f200 STRING f201 f203;
-		# and Cut may be   f202 move delete f203
-		qq/"\e[200~"/, 'BeginPasteGroup', # Pre-paste
-		qq/"\e[201~"/, 'EndPasteGroup', # Post-paste
-		qq/"\e[202~"/, 'BeginEditGroup', # Pre-edit
-		qq/"\e[203~"/, 'EndEditGroup', # Post-edit
+                # XTerm mouse editing (f202/f203 not in mainstream yet):
+                # Paste may be:         move f200 STRING f201
+                # or               f202 move f200 STRING f201 f203;
+                # and Cut may be   f202 move delete f203
+                qq/"\e[200~"/, 'BeginPasteGroup', # Pre-paste
+                qq/"\e[201~"/, 'EndPasteGroup', # Post-paste
+                qq/"\e[202~"/, 'BeginEditGroup', # Pre-edit
+                qq/"\e[203~"/, 'EndEditGroup', # Post-edit
 
-		# OSX xterm:
-		# OSX xterm: home \eOH end \eOF delete \e[3~ help \e[28~ f13 \e[25~
-		# gray- \eOm gray+ \eOk gray-enter \eOM gray* \eOj gray/ \eOo gray= \eO
-		# grayClear \e\e.
+                # OSX xterm:
+                # OSX xterm: home \eOH end \eOF delete \e[3~ help \e[28~ f13 \e[25~
+                # gray- \eOm gray+ \eOk gray-enter \eOM gray* \eOj gray/ \eOo gray= \eO
+                # grayClear \e\e.
 
-		qq/"\eOH"/,   'BeginningOfLine',        # home
-		qq/"\eOF"/,   'EndOfLine',        	# end
+                qq/"\eOH"/,   'BeginningOfLine',        # home
+                qq/"\eOF"/,   'EndOfLine',              # end
 
-		# HP xterm
-		#qq/"\e[A"/,   'PreviousHistory',	# up    arrow
-		#qq/"\e[B"/,   'NextHistory',		# down  arrow
-		#qq/"\e[C"/,   'ForwardChar',		# right arrow
-		#qq/"\e[D"/,   'BackwardChar',		# left  arrow
-		qq/"\e[H"/,   'BeginningOfLine',        # home
-		#'C-k',        'KillLine',		# clear display
-		qq/"\e[5~"/,  'HistorySearchBackward',	# prev
-		qq/"\e[6~"/,  'HistorySearchForward',	# next
-		qq/"\e[\0"/,  'BeginningOfLine',	# home
+                # HP xterm
+                #qq/"\e[A"/,   'PreviousHistory',       # up    arrow
+                #qq/"\e[B"/,   'NextHistory',           # down  arrow
+                #qq/"\e[C"/,   'ForwardChar',           # right arrow
+                #qq/"\e[D"/,   'BackwardChar',          # left  arrow
+                qq/"\e[H"/,   'BeginningOfLine',        # home
+                #'C-k',        'KillLine',              # clear display
+                qq/"\e[5~"/,  'HistorySearchBackward',  # prev
+                qq/"\e[6~"/,  'HistorySearchForward',   # next
+                qq/"\e[\0"/,  'BeginningOfLine',        # home
 
-		# These contradict:
-		($^O =~ /^hp\W?ux/i ? (
-		  qq/"\e[1~"/,  'HistorySearchForward',   # find
-		  qq/"\e[3~"/,  'ToggleInsertMode',	# insert char
-		  qq/"\e[4~"/,  'ToggleInsertMode',	# select
-		 ) : (		# "Normal" xterm
-		  qq/"\e[1~"/,  'BeginningOfLine',	# home
-		  qq/"\e[3~"/,  'DeleteChar',		# delete
-		  qq/"\e[4~"/,  'EndOfLine',	# end
-		)),
+                # These contradict:
+                ($^O =~ /^hp\W?ux/i ? (
+                  qq/"\e[1~"/,  'HistorySearchForward',   # find
+                  qq/"\e[3~"/,  'ToggleInsertMode',     # insert char
+                  qq/"\e[4~"/,  'ToggleInsertMode',     # select
+                 ) : (          # "Normal" xterm
+                  qq/"\e[1~"/,  'BeginningOfLine',      # home
+                  qq/"\e[3~"/,  'DeleteChar',           # delete
+                  qq/"\e[4~"/,  'EndOfLine',    # end
+                )),
 
-		# hpterm
+                # hpterm
 
-		(($ENV{'TERM'} and $ENV{'TERM'} eq 'hpterm') ?
-		 (
-		  qq/"\eA"/,    'PreviousHistory',     # up    arrow
-		  qq/"\eB"/,    'NextHistory',	       # down  arrow
-		  qq/"\eC"/,    'ForwardChar',	       # right arrow
-		  qq/"\eD"/,    'BackwardChar',	       # left  arrow
-		  qq/"\eS"/,    'BeginningOfHistory',  # shift up    arrow
-		  qq/"\eT"/,    'EndOfHistory',	       # shift down  arrow
-		  qq/"\e&r1R"/, 'EndOfLine',	       # shift right arrow
-		  qq/"\e&r1L"/, 'BeginningOfLine',     # shift left  arrow
-		  qq/"\eJ"/,    'ClearScreen',	       # clear display
-		  qq/"\eM"/,    'UnixLineDiscard',     # delete line
-		  qq/"\eK"/,    'KillLine',	       # clear  line
-		  qq/"\eG\eK"/, 'BackwardKillLine',    # shift clear line
-		  qq/"\eP"/,    'DeleteChar',	       # delete char
-		  qq/"\eL"/,    'Yank',		       # insert line
-		  qq/"\eQ"/,    'ToggleInsertMode',    # insert char
-		  qq/"\eV"/,    'HistorySearchBackward',# prev
-		  qq/"\eU"/,    'HistorySearchForward',# next
-		  qq/"\eh"/,    'BeginningOfLine',     # home
-		  qq/"\eF"/,    'EndOfLine',	       # shift home
-		  qq/"\ei"/,    'Suspend',	       # shift tab
-		 ) :
-		 ()
-		),
-		($inDOS ?
-		 (
-		  qq/"\0\2"/,  'SetMark', # 2: <Control>+<Space>
-		  qq/"\0\3"/,  'SetMark', # 3: <Control>+<@>
-		  qq/"\0\4"/,  'YankClipboard',    # 4: <Shift>+<Insert>
-		  qq/"\0\5"/,  'KillRegionClipboard',    # 5: <Shift>+<Delete>
-		  qq/"\0\16"/, 'Undo', # 14: <Alt>+<Backspace>
-#		  qq/"\0\23"/, 'RevertLine', # 19: <Alt>+<R>
-#		  qq/"\0\24"/, 'TransposeWords', # 20: <Alt>+<T>
-#		  qq/"\0\25"/, 'YankPop', # 21: <Alt>+<Y>
-#		  qq/"\0\26"/, 'UpcaseWord', # 22: <Alt>+<U>
-#		  qq/"\0\31"/, 'ReverseSearchHistory', # 25: <Alt>+<P>
-#		  qq/"\0\40"/, 'KillWord', # 32: <Alt>+<D>
-#		  qq/"\0\41"/, 'ForwardWord', # 33: <Alt>+<F>
-#		  qq/"\0\46"/, 'DownCaseWord', # 38: <Alt>+<L>
-		  #qq/"\0\51"/, 'TildeExpand', # 41: <Alt>+<\'>
-#		  qq/"\0\56"/, 'CapitalizeWord', # 46: <Alt>+<C>
-#		  qq/"\0\60"/, 'BackwardWord', # 48: <Alt>+<B>
-#		  qq/"\0\61"/, 'ForwardSearchHistory', # 49: <Alt>+<N>
-		  #qq/"\0\64"/, 'YankLastArg', # 52: <Alt>+<.>
-		  qq/"\0\65"/,  'PossibleCompletions', # 53: <Alt>+</>
-		  qq/"\0\107"/, 'BeginningOfLine', # 71: <Home>
-		  qq/"\0\110"/, 'previous-history', # 72: <Up arrow>
-		  qq/"\0\111"/, 'HistorySearchBackward', # 73: <Page Up>
-		  qq/"\0\113"/, 'backward-char', # 75: <Left arrow>
-		  qq/"\0\115"/, 'forward-char', # 77: <Right arrow>
-		  qq/"\0\117"/, 'EndOfLine', # 79: <End>
-		  qq/"\0\120"/, 'next-history', # 80: <Down arrow>
-		  qq/"\0\121"/, 'HistorySearchForward', # 81: <Page Down>
-		  qq/"\0\122"/, 'ToggleInsertMode', # 82: <Insert>
-		  qq/"\0\123"/, 'DeleteChar', # 83: <Delete>
-		  qq/"\0\163"/, 'BackwardWord', # 115: <Ctrl>+<Left arrow>
-		  qq/"\0\164"/, 'ForwardWord', # 116: <Ctrl>+<Right arrow>
-		  qq/"\0\165"/, 'KillLine', # 117: <Ctrl>+<End>
-		  qq/"\0\166"/, 'EndOfHistory', # 118: <Ctrl>+<Page Down>
-		  qq/"\0\167"/, 'BackwardKillLine', # 119: <Ctrl>+<Home>
-		  qq/"\0\204"/, 'BeginningOfHistory', # 132: <Ctrl>+<Page Up>
-		  qq/"\0\x92"/, 'CopyRegionAsKillClipboard', # 146: <Ctrl>+<Insert>
-		  qq/"\0\223"/, 'KillWord', # 147: <Ctrl>+<Delete>
-		  qq/"\0#"/, 'PrintHistory', # Alt-H
-		 )
-		 : ( 'C-@',	'Ding')
-		)
-	       );
+                (($ENV{'TERM'} and $ENV{'TERM'} eq 'hpterm') ?
+                 (
+                  qq/"\eA"/,    'PreviousHistory',     # up    arrow
+                  qq/"\eB"/,    'NextHistory',         # down  arrow
+                  qq/"\eC"/,    'ForwardChar',         # right arrow
+                  qq/"\eD"/,    'BackwardChar',        # left  arrow
+                  qq/"\eS"/,    'BeginningOfHistory',  # shift up    arrow
+                  qq/"\eT"/,    'EndOfHistory',        # shift down  arrow
+                  qq/"\e&r1R"/, 'EndOfLine',           # shift right arrow
+                  qq/"\e&r1L"/, 'BeginningOfLine',     # shift left  arrow
+                  qq/"\eJ"/,    'ClearScreen',         # clear display
+                  qq/"\eM"/,    'UnixLineDiscard',     # delete line
+                  qq/"\eK"/,    'KillLine',            # clear  line
+                  qq/"\eG\eK"/, 'BackwardKillLine',    # shift clear line
+                  qq/"\eP"/,    'DeleteChar',          # delete char
+                  qq/"\eL"/,    'Yank',                # insert line
+                  qq/"\eQ"/,    'ToggleInsertMode',    # insert char
+                  qq/"\eV"/,    'HistorySearchBackward',# prev
+                  qq/"\eU"/,    'HistorySearchForward',# next
+                  qq/"\eh"/,    'BeginningOfLine',     # home
+                  qq/"\eF"/,    'EndOfLine',           # shift home
+                  qq/"\ei"/,    'Suspend',             # shift tab
+                 ) :
+                 ()
+                ),
+                ($inDOS ?
+                 (
+                  qq/"\0\2"/,  'SetMark', # 2: <Control>+<Space>
+                  qq/"\0\3"/,  'SetMark', # 3: <Control>+<@>
+                  qq/"\0\4"/,  'YankClipboard',    # 4: <Shift>+<Insert>
+                  qq/"\0\5"/,  'KillRegionClipboard',    # 5: <Shift>+<Delete>
+                  qq/"\0\16"/, 'Undo', # 14: <Alt>+<Backspace>
+#                 qq/"\0\23"/, 'RevertLine', # 19: <Alt>+<R>
+#                 qq/"\0\24"/, 'TransposeWords', # 20: <Alt>+<T>
+#                 qq/"\0\25"/, 'YankPop', # 21: <Alt>+<Y>
+#                 qq/"\0\26"/, 'UpcaseWord', # 22: <Alt>+<U>
+#                 qq/"\0\31"/, 'ReverseSearchHistory', # 25: <Alt>+<P>
+#                 qq/"\0\40"/, 'KillWord', # 32: <Alt>+<D>
+#                 qq/"\0\41"/, 'ForwardWord', # 33: <Alt>+<F>
+#                 qq/"\0\46"/, 'DownCaseWord', # 38: <Alt>+<L>
+                  #qq/"\0\51"/, 'TildeExpand', # 41: <Alt>+<\'>
+#                 qq/"\0\56"/, 'CapitalizeWord', # 46: <Alt>+<C>
+#                 qq/"\0\60"/, 'BackwardWord', # 48: <Alt>+<B>
+#                 qq/"\0\61"/, 'ForwardSearchHistory', # 49: <Alt>+<N>
+                  #qq/"\0\64"/, 'YankLastArg', # 52: <Alt>+<.>
+                  qq/"\0\65"/,  'PossibleCompletions', # 53: <Alt>+</>
+                  qq/"\0\107"/, 'BeginningOfLine', # 71: <Home>
+                  qq/"\0\110"/, 'previous-history', # 72: <Up arrow>
+                  qq/"\0\111"/, 'HistorySearchBackward', # 73: <Page Up>
+                  qq/"\0\113"/, 'backward-char', # 75: <Left arrow>
+                  qq/"\0\115"/, 'forward-char', # 77: <Right arrow>
+                  qq/"\0\117"/, 'EndOfLine', # 79: <End>
+                  qq/"\0\120"/, 'next-history', # 80: <Down arrow>
+                  qq/"\0\121"/, 'HistorySearchForward', # 81: <Page Down>
+                  qq/"\0\122"/, 'ToggleInsertMode', # 82: <Insert>
+                  qq/"\0\123"/, 'DeleteChar', # 83: <Delete>
+                  qq/"\0\163"/, 'BackwardWord', # 115: <Ctrl>+<Left arrow>
+                  qq/"\0\164"/, 'ForwardWord', # 116: <Ctrl>+<Right arrow>
+                  qq/"\0\165"/, 'KillLine', # 117: <Ctrl>+<End>
+                  qq/"\0\166"/, 'EndOfHistory', # 118: <Ctrl>+<Page Down>
+                  qq/"\0\167"/, 'BackwardKillLine', # 119: <Ctrl>+<Home>
+                  qq/"\0\204"/, 'BeginningOfHistory', # 132: <Ctrl>+<Page Up>
+                  qq/"\0\x92"/, 'CopyRegionAsKillClipboard', # 146: <Ctrl>+<Insert>
+                  qq/"\0\223"/, 'KillWord', # 147: <Ctrl>+<Delete>
+                  qq/"\0#"/, 'PrintHistory', # Alt-H
+                 )
+                 : ( 'C-@',     'Ding')
+                )
+               );
 
     *KeyMap = *emacs_keymap;
     my @add_bindings = ();
     foreach ('-', '0' .. '9') { push(@add_bindings, "M-$_", 'DigitArgument'); }
     foreach ("A" .. "Z") {
       next if  # defined($KeyMap[27]) && defined (%{"$KeyMap{name}_27"}) &&
-	defined $ {"$KeyMap{name}_27"}[ord $_];
+        defined $ {"$KeyMap{name}_27"}[ord $_];
       push(@add_bindings, "M-$_", 'DoLowercaseVersion');
     }
     if ($inDOS) {
-	# Default translation of Alt-char
-	$ {"$KeyMap{name}_0"}{'Esc'} = *{"$KeyMap{name}_27"};
-	$ {"$KeyMap{name}_0"}{'default'} = 'F_DoEscVersion';
+        # Default translation of Alt-char
+        $ {"$KeyMap{name}_0"}{'Esc'} = *{"$KeyMap{name}_27"};
+        $ {"$KeyMap{name}_0"}{'default'} = 'F_DoEscVersion';
     }
     &rl_bind(@add_bindings);
-    
+
     # Vi input mode.
     &InitKeymap(*vi_keymap, 'SelfInsert', 'vi_keymap',
 
-		"\e",	'ViEndInsert',
-		'C-c',	'Interrupt',
-		'C-h',	'BackwardDeleteChar',
-		'C-w',	'UnixWordRubout',
-		'C-u',	'UnixLineDiscard',
-		'C-v',	'QuotedInsert',
-		'DEL',	'BackwardDeleteChar',
-		"\n",	'ViAcceptInsert',
-		"\r",	'ViAcceptInsert',
-	       );
+                "\e",   'ViEndInsert',
+                'C-c',  'Interrupt',
+                'C-h',  'BackwardDeleteChar',
+                'C-w',  'UnixWordRubout',
+                'C-u',  'UnixLineDiscard',
+                'C-v',  'QuotedInsert',
+                'DEL',  'BackwardDeleteChar',
+                "\n",   'ViAcceptInsert',
+                "\r",   'ViAcceptInsert',
+               );
 
     # Vi command mode.
     &InitKeymap(*vicmd_keymap, 'Ding', 'vicmd_keymap',
 
-		'C-c',	'Interrupt',
-		'C-e',	'EmacsEditingMode',
-		'C-h',	'ViMoveCursor',
-		'C-l',	'ClearScreen',
-		"\n",	'ViAcceptLine',
-		"\r",	'ViAcceptLine',
+                'C-c',  'Interrupt',
+                'C-e',  'EmacsEditingMode',
+                'C-h',  'ViMoveCursor',
+                'C-l',  'ClearScreen',
+                "\n",   'ViAcceptLine',
+                "\r",   'ViAcceptLine',
 
-		' ',	'ViMoveCursor',
-		'#',	'SaveLine',
-		'$',	'ViMoveCursor',
-		'%',	'ViMoveCursor',
-		'*',    'ViInsertPossibleCompletions',
-		'+',	'NextHistory',
-		',',	'ViMoveCursor',
-		'-',	'PreviousHistory',
-		'.',	'ViRepeatLastCommand',
-		'/',	'ViSearch',
+                ' ',    'ViMoveCursor',
+                '#',    'SaveLine',
+                '$',    'ViMoveCursor',
+                '%',    'ViMoveCursor',
+                '*',    'ViInsertPossibleCompletions',
+                '+',    'NextHistory',
+                ',',    'ViMoveCursor',
+                '-',    'PreviousHistory',
+                '.',    'ViRepeatLastCommand',
+                '/',    'ViSearch',
 
-		'0',	'ViMoveCursor',
-		'1',	'ViDigit',
-		'2',	'ViDigit',
-		'3',	'ViDigit',
-		'4',	'ViDigit',
-		'5',	'ViDigit',
-		'6',	'ViDigit',
-		'7',	'ViDigit',
-		'8',	'ViDigit',
-		'9',	'ViDigit',
+                '0',    'ViMoveCursor',
+                '1',    'ViDigit',
+                '2',    'ViDigit',
+                '3',    'ViDigit',
+                '4',    'ViDigit',
+                '5',    'ViDigit',
+                '6',    'ViDigit',
+                '7',    'ViDigit',
+                '8',    'ViDigit',
+                '9',    'ViDigit',
 
-		';',	'ViMoveCursor',
-		'=',    'ViPossibleCompletions',
-		'?',	'ViSearch',
+                ';',    'ViMoveCursor',
+                '=',    'ViPossibleCompletions',
+                '?',    'ViSearch',
 
-		'A',	'ViAppendLine',
-		'B',	'ViMoveCursor',
-		'C',	'ViChangeLine',
-		'D',	'ViDeleteLine',
-		'E',	'ViMoveCursor',
-		'F',	'ViMoveCursor',
-		'G',	'ViHistoryLine',
-		'H',	'PrintHistory',
-		'I',	'ViBeginInput',
-		'N',	'ViRepeatSearch',
-		'P',	'ViPutBefore',
-		'R',	'ViReplaceMode',
-		'S',	'ViChangeEntireLine',
-		'T',	'ViMoveCursor',
-		'U',	'ViUndoAll',
-		'W',	'ViMoveCursor',
-		'X',	'ViBackwardDeleteChar',
-		'Y',	'ViYankLine',
+                'A',    'ViAppendLine',
+                'B',    'ViMoveCursor',
+                'C',    'ViChangeLine',
+                'D',    'ViDeleteLine',
+                'E',    'ViMoveCursor',
+                'F',    'ViMoveCursor',
+                'G',    'ViHistoryLine',
+                'H',    'PrintHistory',
+                'I',    'ViBeginInput',
+                'N',    'ViRepeatSearch',
+                'P',    'ViPutBefore',
+                'R',    'ViReplaceMode',
+                'S',    'ViChangeEntireLine',
+                'T',    'ViMoveCursor',
+                'U',    'ViUndoAll',
+                'W',    'ViMoveCursor',
+                'X',    'ViBackwardDeleteChar',
+                'Y',    'ViYankLine',
 
-		'\\',   'ViComplete',
-		'^',	'ViMoveCursor',
+                '\\',   'ViComplete',
+                '^',    'ViMoveCursor',
 
-		'a',	'ViAppend',
-		'b',	'ViMoveCursor',
-		'c',	'ViChange',
-		'd',	'ViDelete',
-		'e',	'ViMoveCursor',
-		'f',	'ViMoveCursorFind',
-		'h',	'ViMoveCursor',
-		'i',	'ViInput',
-		'j',	'NextHistory',
-		'k',	'PreviousHistory',
-		'l',	'ViMoveCursor',
-		'n',	'ViRepeatSearch',
-		'p',	'ViPut',
-		'r',	'ViReplaceChar',
-		's',	'ViChangeChar',
-		't',	'ViMoveCursorTo',
-		'u',	'ViUndo',
-		'w',	'ViMoveCursor',
-		'x',	'ViDeleteChar',
-		'y',	'ViYank',
+                'a',    'ViAppend',
+                'b',    'ViMoveCursor',
+                'c',    'ViChange',
+                'd',    'ViDelete',
+                'e',    'ViMoveCursor',
+                'f',    'ViMoveCursorFind',
+                'h',    'ViMoveCursor',
+                'i',    'ViInput',
+                'j',    'NextHistory',
+                'k',    'PreviousHistory',
+                'l',    'ViMoveCursor',
+                'n',    'ViRepeatSearch',
+                'p',    'ViPut',
+                'r',    'ViReplaceChar',
+                's',    'ViChangeChar',
+                't',    'ViMoveCursorTo',
+                'u',    'ViUndo',
+                'w',    'ViMoveCursor',
+                'x',    'ViDeleteChar',
+                'y',    'ViYank',
 
-		'|',	'ViMoveCursor',
-		'~',	'ViToggleCase',
+                '|',    'ViMoveCursor',
+                '~',    'ViToggleCase',
 
-		(($inDOS
-		  and (not $ENV{'TERM'} or $ENV{'TERM'} !~ /^(vt|xterm)/i)) ?
-		 (
-		  qq/"\0\110"/, 'PreviousHistory',   # 72: <Up arrow>
-		  qq/"\0\120"/, 'NextHistory',       # 80: <Down arrow>
-		  qq/"\0\113"/, 'BackwardChar',        # 75: <Left arrow>
-		  qq/"\0\115"/, 'ForwardChar',         # 77: <Right arrow>
-		  "\e",	        'ViCommandMode',
-		 ) :
+                (($inDOS
+                  and (not $ENV{'TERM'} or $ENV{'TERM'} !~ /^(vt|xterm)/i)) ?
+                 (
+                  qq/"\0\110"/, 'PreviousHistory',   # 72: <Up arrow>
+                  qq/"\0\120"/, 'NextHistory',       # 80: <Down arrow>
+                  qq/"\0\113"/, 'BackwardChar',        # 75: <Left arrow>
+                  qq/"\0\115"/, 'ForwardChar',         # 77: <Right arrow>
+                  "\e",         'ViCommandMode',
+                 ) :
 
-		 (('M-C-j','EmacsEditingMode'),	# Conflicts with \e otherwise
-		  (($ENV{'TERM'} and $ENV{'TERM'} eq 'hpterm') ?
-		   (
-		    qq/"\eA"/,    'PreviousHistory',   # up    arrow
-		    qq/"\eB"/,    'NextHistory',       # down  arrow
-		    qq/"\eC"/,    'ForwardChar',	       # right arrow
-		    qq/"\eD"/,    'BackwardChar',	       # left  arrow
-		    qq/"\e\\*"/,  'ViAfterEsc',
-		   ) :
+                 (('M-C-j','EmacsEditingMode'), # Conflicts with \e otherwise
+                  (($ENV{'TERM'} and $ENV{'TERM'} eq 'hpterm') ?
+                   (
+                    qq/"\eA"/,    'PreviousHistory',   # up    arrow
+                    qq/"\eB"/,    'NextHistory',       # down  arrow
+                    qq/"\eC"/,    'ForwardChar',               # right arrow
+                    qq/"\eD"/,    'BackwardChar',              # left  arrow
+                    qq/"\e\\*"/,  'ViAfterEsc',
+                   ) :
 
-		   # Default
-		   (
-		    qq/"\e[A"/,   'PreviousHistory',	# up    arrow
-		    qq/"\e[B"/,   'NextHistory',	# down  arrow
-		    qq/"\e[C"/,   'ForwardChar',		# right arrow
-		    qq/"\e[D"/,   'BackwardChar',		# left  arrow
-		    qq/"\e\\*"/,  'ViAfterEsc', 
-		    qq/"\e[\\*"/, 'ViAfterEsc', 
-		   )
-		))),
-	       );
+                   # Default
+                   (
+                    qq/"\e[A"/,   'PreviousHistory',    # up    arrow
+                    qq/"\e[B"/,   'NextHistory',        # down  arrow
+                    qq/"\e[C"/,   'ForwardChar',                # right arrow
+                    qq/"\e[D"/,   'BackwardChar',               # left  arrow
+                    qq/"\e\\*"/,  'ViAfterEsc',
+                    qq/"\e[\\*"/, 'ViAfterEsc',
+                   )
+                ))),
+               );
 
     # Vi positioning commands (suffixed to vi commands like 'd').
     &InitKeymap(*vipos_keymap, 'ViNonPosition', 'vipos_keymap',
 
-		'^',	'ViFirstWord',
-		'0',	'BeginningOfLine',
-		'1',	'ViDigit',
-		'2',	'ViDigit',
-		'3',	'ViDigit',
-		'4',	'ViDigit',
-		'5',	'ViDigit',
-		'6',	'ViDigit',
-		'7',	'ViDigit',
-		'8',	'ViDigit',
-		'9',	'ViDigit',
-		'$',	'EndOfLine',
-		'h',	'BackwardChar',
-		'l',	'ForwardChar',
-		' ',	'ForwardChar',
-		'C-h',	'BackwardChar',
-		'f',	'ViForwardFindChar',
-		'F',	'ViBackwardFindChar',
-		't',	'ViForwardToChar',
-		'T',	'ViBackwardToChar',
-		';',	'ViRepeatFindChar',
-		',',	'ViInverseRepeatFindChar',
-		'%',	'ViFindMatchingParens',
-		'|',	'ViMoveToColumn',
+                '^',    'ViFirstWord',
+                '0',    'BeginningOfLine',
+                '1',    'ViDigit',
+                '2',    'ViDigit',
+                '3',    'ViDigit',
+                '4',    'ViDigit',
+                '5',    'ViDigit',
+                '6',    'ViDigit',
+                '7',    'ViDigit',
+                '8',    'ViDigit',
+                '9',    'ViDigit',
+                '$',    'EndOfLine',
+                'h',    'BackwardChar',
+                'l',    'ForwardChar',
+                ' ',    'ForwardChar',
+                'C-h',  'BackwardChar',
+                'f',    'ViForwardFindChar',
+                'F',    'ViBackwardFindChar',
+                't',    'ViForwardToChar',
+                'T',    'ViBackwardToChar',
+                ';',    'ViRepeatFindChar',
+                ',',    'ViInverseRepeatFindChar',
+                '%',    'ViFindMatchingParens',
+                '|',    'ViMoveToColumn',
 
-		# Arrow keys
-		($inDOS ?
-		 (
-		  qq/"\0\115"/, 'ForwardChar',         # 77: <Right arrow>
-		  qq/"\0\113"/, 'BackwardChar',        # 75: <Left arrow>
-		  "\e",	        'ViPositionEsc',
-		 ) :
+                # Arrow keys
+                ($inDOS ?
+                 (
+                  qq/"\0\115"/, 'ForwardChar',         # 77: <Right arrow>
+                  qq/"\0\113"/, 'BackwardChar',        # 75: <Left arrow>
+                  "\e",         'ViPositionEsc',
+                 ) :
 
-		($ENV{'TERM'} and $ENV{'TERM'} eq 'hpterm') ?
-		 (
-		  qq/"\eC"/,    'ForwardChar',	       # right arrow
-		  qq/"\eD"/,    'BackwardChar',	       # left  arrow
-		  qq/"\e\\*"/,  'ViPositionEsc',
-		 ) :
+                ($ENV{'TERM'} and $ENV{'TERM'} eq 'hpterm') ?
+                 (
+                  qq/"\eC"/,    'ForwardChar',         # right arrow
+                  qq/"\eD"/,    'BackwardChar',        # left  arrow
+                  qq/"\e\\*"/,  'ViPositionEsc',
+                 ) :
 
-		# Default
-		 (
-		  qq/"\e[C"/,   'ForwardChar',		# right arrow
-		  qq/"\e[D"/,   'BackwardChar',		# left  arrow
-		  qq/"\e\\*"/,  'ViPositionEsc',
-		  qq/"\e[\\*"/, 'ViPositionEsc',
-		 )
-		),
-	       );
+                # Default
+                 (
+                  qq/"\e[C"/,   'ForwardChar',          # right arrow
+                  qq/"\e[D"/,   'BackwardChar',         # left  arrow
+                  qq/"\e\\*"/,  'ViPositionEsc',
+                  qq/"\e[\\*"/, 'ViPositionEsc',
+                 )
+                ),
+               );
 
     # Vi search string input mode for '/' and '?'.
     &InitKeymap(*visearch_keymap, 'SelfInsert', 'visearch_keymap',
 
-		"\e",	'Ding',
-		'C-c',	'Interrupt',
-		'C-h',	'ViSearchBackwardDeleteChar',
-		'C-w',	'UnixWordRubout',
-		'C-u',	'UnixLineDiscard',
-		'C-v',	'QuotedInsert',
-		'DEL',	'ViSearchBackwardDeleteChar',
-		"\n",	'ViEndSearch',
-		"\r",	'ViEndSearch',
-	       );
+                "\e",   'Ding',
+                'C-c',  'Interrupt',
+                'C-h',  'ViSearchBackwardDeleteChar',
+                'C-w',  'UnixWordRubout',
+                'C-u',  'UnixLineDiscard',
+                'C-v',  'QuotedInsert',
+                'DEL',  'ViSearchBackwardDeleteChar',
+                "\n",   'ViEndSearch',
+                "\r",   'ViEndSearch',
+               );
 
     # These constant hashes hold the arguments to &forward_scan() or
     #     &backward_scan() for vi positioning commands, which all
@@ -765,39 +758,39 @@ sub preinit
     #           ^   7...88888888
 
     $Vi_delete_patterns = {
-	ord('w')  =>  q{(?:\w+|[^\w\s]+|)\s*},
-	ord('W')  =>  q{\S*\s*},
-	ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
-	ord('B')  =>  q{\S+\s*|^\s+},
-	ord('e')  =>  q{.\s*\w+|.\s*[^\w\s]+|.\s*$},
-	ord('E')  =>  q{.\s*\S+|.\s*$},
+        ord('w')  =>  q{(?:\w+|[^\w\s]+|)\s*},
+        ord('W')  =>  q{\S*\s*},
+        ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
+        ord('B')  =>  q{\S+\s*|^\s+},
+        ord('e')  =>  q{.\s*\w+|.\s*[^\w\s]+|.\s*$},
+        ord('E')  =>  q{.\s*\S+|.\s*$},
     };
 
     $Vi_move_patterns = {
-	ord('w')  =>  q{(?:\w+|[^\w\s]+|)\s*},
-	ord('W')  =>  q{\S*\s*},
-	ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
-	ord('B')  =>  q{\S+\s*|^\s+},
-	ord('e')  =>  q{.\s*\w*(?=\w)|.\s*[^\w\s]*(?=[^\w\s])|.?\s*(?=\s$)},
-	ord('E')  =>  q{.\s*\S*(?=\S)|.?\s*(?=\s$)},
+        ord('w')  =>  q{(?:\w+|[^\w\s]+|)\s*},
+        ord('W')  =>  q{\S*\s*},
+        ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
+        ord('B')  =>  q{\S+\s*|^\s+},
+        ord('e')  =>  q{.\s*\w*(?=\w)|.\s*[^\w\s]*(?=[^\w\s])|.?\s*(?=\s$)},
+        ord('E')  =>  q{.\s*\S*(?=\S)|.?\s*(?=\s$)},
     };
 
     $Vi_change_patterns = {
-	ord('w')  =>  q{\w+|[^\w\s]+|\s},
-	ord('W')  =>  q{\S+|\s},
-	ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
-	ord('B')  =>  q{\S+\s*|^\s+},
-	ord('e')  =>  q{.\s*\w+|.\s*[^\w\s]+|.\s*$},
-	ord('E')  =>  q{.\s*\S+|.\s*$},
+        ord('w')  =>  q{\w+|[^\w\s]+|\s},
+        ord('W')  =>  q{\S+|\s},
+        ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
+        ord('B')  =>  q{\S+\s*|^\s+},
+        ord('e')  =>  q{.\s*\w+|.\s*[^\w\s]+|.\s*$},
+        ord('E')  =>  q{.\s*\S+|.\s*$},
     };
 
     $Vi_yank_patterns = {
-	ord('w')  =>  q{(?:\w+|[^\w\s]+|)\s*},
-	ord('W')  =>  q{\S*\s*},
-	ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
-	ord('B')  =>  q{\S+\s*|^\s+},
-	ord('e')  =>  q{.\s*\w*(?=\w)|.\s*[^\w\s]*(?=[^\w\s])|.?\s*(?=\s$)},
-	ord('E')  =>  q{.\s*\S*(?=\S)|.?\s*(?=\s$)},
+        ord('w')  =>  q{(?:\w+|[^\w\s]+|)\s*},
+        ord('W')  =>  q{\S*\s*},
+        ord('b')  =>  q{\w+\s*|[^\w\s]+\s*|^\s+},
+        ord('B')  =>  q{\S+\s*|^\s+},
+        ord('e')  =>  q{.\s*\w*(?=\w)|.\s*[^\w\s]*(?=[^\w\s])|.?\s*(?=\s$)},
+        ord('E')  =>  q{.\s*\S*(?=\S)|.?\s*(?=\s$)},
     };
 
     my $default_mode = 'emacs';
@@ -810,20 +803,20 @@ sub preinit
 ##      *{"rl_$1"} = \$ {"var_$1"} if $name =~ /$var_(.*)/;
 ##    }
 
-    1;				# Returning a glob causes a bug in db5.001m
+    1;                          # Returning a glob causes a bug in db5.001m
 }
 
 sub init
 {
     if ($ENV{'TERM'} and ($ENV{'TERM'} eq 'emacs' || $ENV{'TERM'} eq 'dumb')) {
-	$dumb_term = 1;
+        $dumb_term = 1;
     } elsif (! -c $term_IN && $term_IN eq \*STDIN) { # Believe if it is given
-    	$stdin_not_tty = 1;
+        $stdin_not_tty = 1;
     } else {
-	&get_window_size;
-	&F_ReReadInitFile if !defined($rl_NoInitFromFile);
-	$InputLocMsg = '';
-	*KeyMap = $var_EditingMode;
+        &get_window_size;
+        &F_ReReadInitFile if !defined($rl_NoInitFromFile);
+        $InputLocMsg = '';
+        *KeyMap = $var_EditingMode;
     }
 
     $initialized = 1;
@@ -846,13 +839,13 @@ sub InitKeymap
     #     'F_Ding'.  Meta-maps now don't set a default - this lets
     #     us detect multiple '\*' default declarations.              JP
     if ($default ne '') {
-	my $func = $KeyMap{'default'} = "F_$default";
-	### Temporarily disabled
-	die qq/Bad default function [$func] for keymap "$name"/
-	  if !$autoload_broken and !defined(&$func);
+        my $func = $KeyMap{'default'} = "F_$default";
+        ### Temporarily disabled
+        die qq/Bad default function [$func] for keymap "$name"/
+          if !$autoload_broken and !defined(&$func);
     }
 
-    &rl_bind if @_ > 0;	## The rest of @_ gets passed silently.
+    &rl_bind if @_ > 0; ## The rest of @_ gets passed silently.
 }
 
 sub filler_Pending ($) {
@@ -863,58 +856,67 @@ sub filler_Pending ($) {
     return if not @$keys or $c == 1 or not defined(my $in = &getc_with_pending);
     # provide the numeric argument
     local(*KeyMap) = $var_EditingMode;
-    $doingNumArg = 1;		# Allow NumArg inside NumArg
+    $doingNumArg = 1;           # Allow NumArg inside NumArg
     &do_command(*KeyMap, $c, ord $in);
     return;
   }
 }
 
 
-## _unescape is an internal function that will take a character 
-## sequence, possibly containing escape sequences, and converts to a series 
-## of octal keys.
-##
-## It has special rules for dealing with readline-specific escape sequence 
-## comnands.
-##
-## New-style bindings are enclosed in double-quotes.
-## Characters are taken verbatim except the special cases:
-##    \C-x    Control x (for any x)
-##    \M-x    Meta x (for any x)
-##    \e	  Escape
-##    \*      Set the keymap default   (JP: added this)
-##               (must be the last character of the sequence)
-##
-##    \x      x  (unless it fits the above pattern)
-##
-## Look for special case of "\C-\M-x", which should be treated
-## like "\M-\C-x".
+=head2 _unescape
+
+C<_unescape($string)> -> List of keys
+
+This internal function that takes C<$string> possibly containing
+escape sequences, and converts to a series of octal keys.
+
+It has special rules for dealing with readline-specific escape-sequence
+commands.
+
+New-style key bindings are enclosed in double-quotes.
+Characters are taken verbatim except the special cases:
+
+    \C-x    Control x (for any x)
+    \M-x    Meta x (for any x)
+    \e      Escape
+    \*      Set the keymap default   (JP: added this)
+            (must be the last character of the sequence)
+    \x      x  (unless it fits the above pattern)
+
+Special case "\C-\M-x", should be treated like "\M-\C-x".
+
+=cut
+
+my @ESCAPE_REGEXPS = (
+    # Ctrl-meta <x>
+    [ qr/^\\C-\\M-(.)/, sub { ord("\e"), ctrl(ord(shift)) } ],
+    # Meta <e>
+    [ qr/^\\(M-|e)/, sub { ord("\e") } ],
+    # Ctrl <x>
+    [ qr/^\\C-(.)/, sub { ctrl(ord(shift)) } ],
+    # hex value
+    [ qr/^\\x([0-9a-fA-F]{2})/, sub { hex(shift) } ],
+    # octal value
+    [ qr/^\\([0-7]{3})/, sub { oct(shift) } ],
+    # default
+    [ qr/^\\\*$/, sub { 'default'; } ],
+    # EOT (Ctrl-D)
+    [ qr/^\\d/, sub { 4 } ],
+    # Backspace
+    [ qr/\\b/, sub { 0x7f } ],
+    # Escape Sequence
+    [ qr/\\(.)/,
+      sub {
+          my $chr = shift;
+          ord(($chr =~ /^[afnrtv]$/) ? eval(qq("\\$chr")) : $chr);
+      } ],
+    );
+
 sub _unescape ($) {
   my($key, @keys) = shift;
 
-  my @commands = (
-    # ctrl_meta_x  
-    [ qr/^\\C-\\M-(.)/ => sub { ord("\e"), ctrl(ord(shift)) }, ],
-    # meta_e  
-    [ qr/^\\(M-|e)/ => sub { ord("\e") }, ],
-    # ctrl_x 
-    [ qr/^\\C-(.)/ => sub { ctrl(ord(shift)) }, ],
-    # hex  
-    [ qr/^\\x([0-9a-fA-F]{2})/ => sub { hex(shift) }, ],
-    # octal 
-    [ qr/^\\([0-7]{3})/ => sub { oct(shift) }, ],
-    # default  
-    [ qr/^\\\*$/ => sub { 'default'; }, ],
-    # EOT (Ctrl-D) 
-    [ qr/^\\d/ => sub { 4 }, ],
-    # backspace 
-    [ qr/\\b/ => sub { 0x7f }, ],
-    # escape_seq 
-    [ qr/\\(.)/ => sub { my $chr = shift; ord(($chr =~ /^[afnrtv]$/) ? eval(qq("\\$chr")) : $chr); } ],
-  );
-
   CHAR: while (length($key) > 0) {
-    foreach my $command (@commands) {
+    foreach my $command (@ESCAPE_REGEXPS) {
       my $regex = $command->[0];
       if ($key =~ s/^$regex//) {
         push @keys, $command->[1]->($1);
@@ -960,8 +962,8 @@ sub actually_do_binding
     my $map;
     while (@keys) {
       if (defined($KeyMap[$key]) && ($KeyMap[$key] ne 'F_PrefixMeta')) {
-	warn "Warning$InputLocMsg: ".
-	  "Re-binding char #$key from [$KeyMap[$key]] to meta for [@keys] => $func.\n" if $^W;
+        warn "Warning$InputLocMsg: ".
+          "Re-binding char #$key from [$KeyMap[$key]] to meta for [@keys] => $func.\n" if $^W;
       }
       $KeyMap[$key] = 'F_PrefixMeta';
       $map = "$KeyMap{'name'}_$key";
@@ -973,21 +975,21 @@ sub actually_do_binding
 
     my $name = $KeyMap{'name'};
     if ($key eq 'default') {      # JP: added
-	warn "Warning$InputLocMsg: ".
-	  " changing default action to $func in $name key map\n"
-	  if $^W && defined $KeyMap{'default'};
+        warn "Warning$InputLocMsg: ".
+          " changing default action to $func in $name key map\n"
+          if $^W && defined $KeyMap{'default'};
 
-	$KeyMap{'default'} = RL_func $func;
+        $KeyMap{'default'} = RL_func $func;
     }
     else {
-	if (defined($KeyMap[$key]) && $KeyMap[$key] eq 'F_PrefixMeta'
-	    && $func ne 'PrefixMeta')
-	  {
-	    warn "Warning$InputLocMsg: ".
-	      " Re-binding char #$key to non-meta ($func) in $name key map\n"
-	      if $^W;
-	  }
-	$KeyMap[$key] = RL_func $func;
+        if (defined($KeyMap[$key]) && $KeyMap[$key] eq 'F_PrefixMeta'
+            && $func ne 'PrefixMeta')
+          {
+            warn "Warning$InputLocMsg: ".
+              " Re-binding char #$key to non-meta ($func) in $name key map\n"
+              if $^W;
+          }
+        $KeyMap[$key] = RL_func $func;
     }
   }
 }
@@ -1000,26 +1002,26 @@ and maps the associated bindings to the current KeyMap.
 C<$keyspec> should be the name of key sequence in one of two forms:
 
 Old (GNU readline documented) form:
-     M-x	to indicate Meta-x
-     C-x	to indicate Ctrl-x
-     M-C-x	to indicate Meta-Ctrl-x
-     x		simple char x
+     M-x        to indicate Meta-x
+     C-x        to indicate Ctrl-x
+     M-C-x      to indicate Meta-Ctrl-x
+     x          simple char x
 
 where 'x' above can be a single character, or the special:
 
-     special  	means
-     --------  	-----
-     space	space   ( )
-     spc	space   ( )
-     tab	tab     (\t)
-     del	delete  (0x7f)
-     rubout	delete  (0x7f)
-     newline 	newline (\n)
-     lfd     	newline (\n)
-     ret     	return  (\r)
-     return  	return  (\r)
-     escape  	escape  (\e)
-     esc     	escape  (\e)
+     special    means
+     --------   -----
+     space      space   ( )
+     spc        space   ( )
+     tab        tab     (\t)
+     del        delete  (0x7f)
+     rubout     delete  (0x7f)
+     newline    newline (\n)
+     lfd        newline (\n)
+     ret        return  (\r)
+     return     return  (\r)
+     escape     escape  (\e)
+     esc        escape  (\e)
 
 New form:
   "chars"   (note the required double-quotes)
@@ -1027,11 +1029,11 @@ New form:
 where each char in the list represents a character in the sequence, except
 for the special sequences:
 
-	  \\C-x		Ctrl-x
-	  \\M-x		Meta-x
-	  \\M-C-x	Meta-Ctrl-x
-	  \\e		escape.
-	  \\x		x (if not one of the above)
+          \\C-x         Ctrl-x
+          \\M-x         Meta-x
+          \\M-C-x       Meta-Ctrl-x
+          \\e           escape.
+          \\x           x (if not one of the above)
 
 
 C<$function> should be in the form C<BeginningOfLine> or C<beginning-of-line>.
@@ -1046,7 +1048,7 @@ arrow keys:
     "\e[[C": forward-char
     "\e[[D": backward-char
 
-=cut 
+=cut
 
 sub rl_bind
 {
@@ -1054,133 +1056,145 @@ sub rl_bind
 
     while (defined($key = shift(@_)) && defined($func = shift(@_)))
     {
-	##
-	## Change the function name from something like
-	##	backward-kill-line
-	## to
-	##	BackwardKillLine
-	## if not already there.
-	##
+        ##
+        ## Change the function name from something like
+        ##      backward-kill-line
+        ## to
+        ##      BackwardKillLine
+        ## if not already there.
+        ##
         unless ($func =~ /^[\"\']/) {
-	  $func = "\u$func";
-	  $func =~ s/-(.)/\u$1/g;
+          $func = "\u$func";
+          $func =~ s/-(.)/\u$1/g;
 
-	  # Temporary disabled
-	  if (!$autoload_broken and !defined($ {'readline::'}{"F_$func"})) {
-	    warn "Warning$InputLocMsg: bad bind function [$func]\n" if $^W;
-	    next;
-	  }
-	}
+          # Temporary disabled
+          if (!$autoload_broken and !defined($ {'readline::'}{"F_$func"})) {
+            warn "Warning$InputLocMsg: bad bind function [$func]\n" if $^W;
+            next;
+          }
+        }
 
-	## print "sequence [$key] func [$func]\n"; ##DEBUG
+        ## print "sequence [$key] func [$func]\n"; ##DEBUG
 
-	@keys = ();
- 	## See if it's a new-style binding.
-	if ($key =~ m/"((?:\\.|[^\\])*)"/s) {
-	    @keys = _unescape "$1";
-	} else {
-	    ## old-style binding... only one key (or Meta+key)
-	    my ($isctrl, $orig) = (0, $key);
-	    $isctrl = $key =~ s/\b(C|Control|CTRL)-//i;
-	    push(@keys, ord("\e")) if $key =~ s/\b(M|Meta)-//i; ## is meta?
-	    ## Isolate key part. This matches GNU's implementation.
-	    ## If the key is '-', be careful not to delete it!
-	    $key =~ s/.*-(.)/$1/;
-	    if    ($key =~ /^(space|spc)$/i)   { $key = ' ';    }
-	    elsif ($key =~ /^(rubout|del)$/i)  { $key = "\x7f"; }
-	    elsif ($key =~ /^tab$/i)           { $key = "\t";   }
-	    elsif ($key =~ /^(return|ret)$/i)  { $key = "\r";   }
-	    elsif ($key =~ /^(newline|lfd)$/i) { $key = "\n";   }
-	    elsif ($key =~ /^(escape|esc)$/i)  { $key = "\e";   }
-	    elsif (length($key) > 1) {
-	        warn "Warning$InputLocMsg: strange binding [$orig]\n" if $^W;
-	    }
-	    $key = ord($key);
-	    $key = &ctrl($key) if $isctrl;
-	    push(@keys, $key);
-	}
+        @keys = ();
+        ## See if it's a new-style binding.
+        if ($key =~ m/"((?:\\.|[^\\])*)"/s) {
+            @keys = _unescape "$1";
+        } else {
+            ## old-style binding... only one key (or Meta+key)
+            my ($isctrl, $orig) = (0, $key);
+            $isctrl = $key =~ s/\b(C|Control|CTRL)-//i;
+            push(@keys, ord("\e")) if $key =~ s/\b(M|Meta)-//i; ## is meta?
+            ## Isolate key part. This matches GNU's implementation.
+            ## If the key is '-', be careful not to delete it!
+            $key =~ s/.*-(.)/$1/;
+            if    ($key =~ /^(space|spc)$/i)   { $key = ' ';    }
+            elsif ($key =~ /^(rubout|del)$/i)  { $key = "\x7f"; }
+            elsif ($key =~ /^tab$/i)           { $key = "\t";   }
+            elsif ($key =~ /^(return|ret)$/i)  { $key = "\r";   }
+            elsif ($key =~ /^(newline|lfd)$/i) { $key = "\n";   }
+            elsif ($key =~ /^(escape|esc)$/i)  { $key = "\e";   }
+            elsif (length($key) > 1) {
+                warn "Warning$InputLocMsg: strange binding [$orig]\n" if $^W;
+            }
+            $key = ord($key);
+            $key = &ctrl($key) if $isctrl;
+            push(@keys, $key);
+        }
 
-	# 
-	## Now do the mapping of the sequence represented in @keys
-	 #
-	# print "&actually_do_binding($func, @keys)\n"; ##DEBUG
-	push @arr, $func, [@keys];
-	#&actually_do_binding($func, \@keys);
+        #
+        ## Now do the mapping of the sequence represented in @keys
+         #
+        # print "&actually_do_binding($func, @keys)\n"; ##DEBUG
+        push @arr, $func, [@keys];
+        #&actually_do_binding($func, \@keys);
     }
     &actually_do_binding(@arr);
 }
+
+=head2 read_an_init_file
+
+C<read_an_init_file(inputrc_file)>
+
+Reads and executes I<inputrc_file> which does things like Sets input
+key bindings in key maps.
+
+If there was a problem return 0.  Otherwise return 1;
+
+=cut
 
 sub read_an_init_file {
     my $file = shift;
     my $include_depth = shift;
     local *RC;
     $file =~ s/^~([\\\/])/$ENV{HOME}$1/ if not -f $file and exists $ENV{HOME};
-    return unless open RC, "< $file";
+    return 0 unless open RC, "< $file";
     my (@action) = ('exec'); ## exec, skip, ignore (until appropriate endif)
     my (@level) = ();        ## if, else
 
     local $/ = "\n";
     while (<RC>) {
-	s/^\s+//;
-	next if m/^\s*(#|$)/;
-	$InputLocMsg = " [$file line $.]";
-	if (/^\$if\s+(.*)/) {
-	    my($test) = $1;
-	    push(@level, 'if');
-	    if ($action[$#action] ne 'exec') {
-		## We're supposed to be skipping or ignoring this level,
-		## so for subsequent levels we really ignore completely.
-		push(@action, 'ignore');
-	    } else {
-		## We're executing this IF... do the test.
-		## The test is either "term=xxxx", or just a string that
-		## we compare to $rl_readline_name;
-		if ($test =~ /term=([a-z0-9]+)/) {
-		    $test = ($ENV{'TERM'} && $1 eq $ENV{'TERM'});
-		} else {
-		    $test = $test =~ /^(perl|$rl_readline_name)\s*$/i;
-		}
-		push(@action, $test ? 'exec' : 'skip');
-	    }
-	    next;
-	} elsif (/^\$endif\b/) {
-	    die qq/\rWarning$InputLocMsg: unmatched endif\n/ if @level == 0;
-	    pop(@level);
-	    pop(@action);
-	    next;
-	} elsif (/^\$else\b/) {
-	    die qq/\rWarning$InputLocMsg: unmatched else\n/ if
-		@level == 0 || $level[$#level] ne 'if';
-	    $level[$#level] = 'else'; ## an IF turns into an ELSE
-	    if ($action[$#action] eq 'skip') {
-		$action[$#action] = 'exec'; ## if were SKIPing, now EXEC
-	    } else {
-		$action[$#action] = 'ignore'; ## otherwise, just IGNORE.
-	    }
-	    next;
-	} elsif (/^\$include\s+(\S+)/) {
-	    if ($include_depth > $max_include_depth) {
-		warn "Deep recursion in \$include directives in $file.\n";
-	    } else {
-		read_an_init_file($1, $include_depth + 1);
-	    }
-	} elsif ($action[$#action] ne 'exec') {
-	    ## skipping this one....
-	# readline permits trailing comments in inputrc
-	# this seems to solve the warnings caused by trailing comments in the
-	# default /etc/inputrc on Mandrake Linux boxes.
-	} elsif (m/\s*set\s+(\S+)\s+(\S*)/) {	# Allow trailing comment
-	    &rl_set($1, $2, $file);
-	} elsif (m/^\s*(\S+):\s+("(?:\\.|[^\\\"])*"|'(\\.|[^\\\'])*')/) {	# Allow trailing comment
-	    &rl_bind($1, $2);
-	} elsif (m/^\s*(\S+|"[^\"]+"):\s+(\S+)/) { # Allow trailing comment
-	    &rl_bind($1, $2);
-	} else {
-	    chomp;
-	    warn "\rWarning$InputLocMsg: Bad line [$_]\n" if $^W;
-	}
+        s/^\s+//;
+        next if m/^\s*(#|$)/;
+        $InputLocMsg = " [$file line $.]";
+        if (/^\$if\s+(.*)/) {
+            my($test) = $1;
+            push(@level, 'if');
+            if ($action[$#action] ne 'exec') {
+                ## We're supposed to be skipping or ignoring this level,
+                ## so for subsequent levels we really ignore completely.
+                push(@action, 'ignore');
+            } else {
+                ## We're executing this IF... do the test.
+                ## The test is either "term=xxxx", or just a string that
+                ## we compare to $rl_readline_name;
+                if ($test =~ /term=([a-z0-9]+)/) {
+                    $test = ($ENV{'TERM'} && $1 eq $ENV{'TERM'});
+                } else {
+                    $test = $test =~ /^(perl|$rl_readline_name)\s*$/i;
+                }
+                push(@action, $test ? 'exec' : 'skip');
+            }
+            next;
+        } elsif (/^\$endif\b/) {
+            die qq/\rWarning$InputLocMsg: unmatched endif\n/ if @level == 0;
+            pop(@level);
+            pop(@action);
+            next;
+        } elsif (/^\$else\b/) {
+            die qq/\rWarning$InputLocMsg: unmatched else\n/ if
+                @level == 0 || $level[$#level] ne 'if';
+            $level[$#level] = 'else'; ## an IF turns into an ELSE
+            if ($action[$#action] eq 'skip') {
+                $action[$#action] = 'exec'; ## if were SKIPing, now EXEC
+            } else {
+                $action[$#action] = 'ignore'; ## otherwise, just IGNORE.
+            }
+            next;
+        } elsif (/^\$include\s+(\S+)/) {
+            if ($include_depth > $max_include_depth) {
+                warn "Deep recursion in \$include directives in $file.\n";
+            } else {
+                read_an_init_file($1, $include_depth + 1);
+            }
+        } elsif ($action[$#action] ne 'exec') {
+            ## skipping this one....
+        # Readline permits trailing comments in inputrc
+        # For example, /etc/inputrc on Mandrake Linux boxes has trailing
+    # comments
+        } elsif (m/\s*set\s+(\S+)\s+(\S*)/) { # Allow trailing comment
+            &rl_set($1, $2, $file);
+        } elsif (m/^\s*(\S+):\s+("(?:\\.|[^\\\"])*"|'(\\.|[^\\\'])*')/) { # Allow trailing comment
+            &rl_bind($1, $2);
+        } elsif (m/^\s*(\S+|"[^\"]+"):\s+(\S+)/) { # Allow trailing comment
+            &rl_bind($1, $2);
+        } else {
+            chomp;
+            warn "\rWarning$InputLocMsg: Bad line [$_]\n" if $^W;
+        }
     }
     close(RC);
+    return 1;
 }
 
 sub F_ReReadInitFile
@@ -1188,8 +1202,8 @@ sub F_ReReadInitFile
     my ($file) = $ENV{'TRP_INPUTRC'};
     $file = $ENV{'INPUTRC'} unless defined $file;
     unless (defined $file) {
-	return unless defined $ENV{'HOME'};
-	$file = "$ENV{'HOME'}/.inputrc";
+        return unless defined $ENV{'HOME'};
+        $file = "$ENV{'HOME'}/.inputrc";
     }
     read_an_init_file($file, 0);
 }
@@ -1197,7 +1211,7 @@ sub F_ReReadInitFile
 sub get_ornaments_selected {
     return if @$rl_term_set >= 6;
     local $^W=0;
-    my $Orig = $Term::ReadLine::Perl5::term->ornaments(); 
+    my $Orig = Term::ReadLine::TermCap::ornaments(__PACKAGE__);
     eval {
         # Term::ReadLine does not expose its $terminal, so make another
         require Term::Cap;
@@ -1206,16 +1220,22 @@ sub get_ornaments_selected {
         $terminal->Trequire('mr');
     };
     if (!$@ and $Orig ne ',,,'){
-	my @set = @$rl_term_set;
+        my @set = @$rl_term_set;
 
-        $Term::ReadLine::Perl5::term->ornaments
-            (join(',', (split(/,/, $Orig))[0,1]) . ',mr,me') ;
+        Term::ReadLine::TermCap::ornaments(__PACKAGE__,
+                                        join(',',
+                                             (split(/,/, $Orig))[0,1])
+                                        . ',mr,me') ;
         @set[4,5] = @$rl_term_set[2,3];
-        $Term::ReadLine::Perl5::term->ornaments($Orig);
-	@$rl_term_set = @set;
+        Term::ReadLine::TermCap::ornaments(__PACKAGE__, $Orig);
+        @$rl_term_set = @set;
     } else {
         @$rl_term_set[4,5] = @$rl_term_set[2,3];
     }
+}
+
+sub get_line {
+  scalar <$term_IN>;
 }
 
 =head2 readline_dumb
@@ -1223,15 +1243,15 @@ sub get_ornaments_selected {
 A version readline for a dumb terminal, that is one that doesn't have
 many terminal editing capabilities.
 
-=cut 
+=cut
 
-sub readline_dumb 
+sub readline_dumb
 {
     local $\ = '';
     print $term_OUT $prompt;
     local $/ = "\n";
     return undef
-	if !defined($line = $Term::ReadLine::Perl5::term->get_line);
+        if !defined($line = get_line);
     chomp($line);
     $| = $oldbar;
     select $old;
@@ -1240,25 +1260,25 @@ sub readline_dumb
 
 =head2 readline
 
-C<&readline'readline($prompt, $default)> 
+C<&readline::readline($prompt, $default)>
 
-The main routine to call interactively read lines. 
+The main routine to call interactively read lines.
 
-C<$default> can be omitted. The next input line is returned or 
+C<$default> can be omitted. The next input line is returned or
 C<undef> on EOF.
 
-=cut 
+=cut
 
 sub readline
 {
-    $Term::ReadLine::Perl5::term->register_Tk 
+    $Term::ReadLine::Perl5::term->register_Tk
       if not $Term::ReadLine::registered and $Term::ReadLine::toloop
-	and defined &Tk::DoOneEvent;
+        and defined &Tk::DoOneEvent;
     if ($stdin_not_tty) {
-	local $/ = "\n";
-	return undef if !defined($line = <$term_IN>);
-	chomp($line);
-	return $line;
+        local $/ = "\n";
+        return undef if !defined($line = <$term_IN>);
+        chomp($line);
+        return $line;
     }
 
     $old = select $term_OUT;
@@ -1273,9 +1293,9 @@ sub readline
     # contains anything.
 
     # On DOSish 80-wide console
-    #	perl -we "print 1 x shift, qq(\b2\r3); sleep 2" 79
+    #   perl -we "print 1 x shift, qq(\b2\r3); sleep 2" 79
     # prints 3 on the same line,
-    #	perl -we "print 1 x shift, qq(\b2\r3); sleep 2" 80
+    #   perl -we "print 1 x shift, qq(\b2\r3); sleep 2" 80
     # on the next; $rl_screen_width is 79.
 
     # on XTerm one needs to increase the number by 1.
@@ -1284,20 +1304,20 @@ sub readline
       if $rl_scroll_nextline;
 
     if ($dumb_term) {
-	return readline_dumb;
+        return readline_dumb;
     }
 
     # test if we resume an 'Operate' command
     if ($rl_OperateCount > 0 && (!defined $_[1] || $_[1] eq '')) {
-	## it's from a valid previous 'Operate' command and
-	## user didn't give a default line
-	## we leave $rl_HistoryIndex untouched
-	$line = $rl_History[$rl_HistoryIndex];
+        ## it's from a valid previous 'Operate' command and
+        ## user didn't give a default line
+        ## we leave $rl_HistoryIndex untouched
+        $line = $rl_History[$rl_HistoryIndex];
     } else {
-	## set history pointer at the end of history
-	$rl_HistoryIndex = $#rl_History + 1;
-	$rl_OperateCount = 0;
-	$line = defined $_[1] ? $_[1] : '';
+        ## set history pointer at the end of history
+        $rl_HistoryIndex = $#rl_History + 1;
+        $rl_OperateCount = 0;
+        $line = defined $_[1] ? $_[1] : '';
     }
     $rl_OperateCount-- if $rl_OperateCount > 0;
 
@@ -1306,40 +1326,40 @@ sub readline
 # I don't think we need to do this, actually...
 #    while (&ioctl(STDIN,$FIONREAD,$fion))
 #    {
-#	local($n_chars_available) = unpack ($fionread_t, $fion);
-#	## print "n_chars = $n_chars_available\n";
-#	last if $n_chars_available == 0;
-#	$line .= getc_with_pending;  # should we prepend if $rl_start_default_at_beginning?
+#       local($n_chars_available) = unpack ($fionread_t, $fion);
+#       ## print "n_chars = $n_chars_available\n";
+#       last if $n_chars_available == 0;
+#       $line .= getc_with_pending;  # should we prepend if $rl_start_default_at_beginning?
 #    }
 
     $D = $rl_start_default_at_beginning ? 0 : length($line); ## set dot.
     $LastCommandKilledText = 0;     ## heck, was no last command.
-    $lastcommand = '';		    ## Well, there you go.
+    $lastcommand = '';              ## Well, there you go.
     $line_rl_mark = -1;
 
     ##
     ## some stuff for &redisplay.
     ##
-    $lastredisplay = '';	## Was no last redisplay for this time.
+    $lastredisplay = '';        ## Was no last redisplay for this time.
     $lastlen = length($lastredisplay);
     $lastpromptlen = 0;
-    $lastdelta = 0;		## Cursor was nowhere
-    $si = 0;			## Want line to start left-justified
-    $force_redraw = 1;		## Want to display with brute force.
-    if (!eval {SetTTY()}) {	## Put into raw mode.
+    $lastdelta = 0;             ## Cursor was nowhere
+    $si = 0;                    ## Want line to start left-justified
+    $force_redraw = 1;          ## Want to display with brute force.
+    if (!eval {SetTTY()}) {     ## Put into raw mode.
         warn $@ if $@;
         $dumb_term = 1;
-	return readline_dumb;
+        return readline_dumb;
     }
 
     *KeyMap = $var_EditingMode;
-    undef($AcceptLine);		## When set, will return its value.
-    undef($ReturnEOF);		## ...unless this on, then return undef.
-    @Pending = ();		## Contains characters to use as input.
-    @undo = ();			## Undo history starts empty for each line.
-    @undoGroupS = ();		## Undo groups start empty for each line.
-    undef $memorizedArg;	## No digitArgument memorized
-    undef $memorizedPos;	## No position memorized
+    undef($AcceptLine);         ## When set, will return its value.
+    undef($ReturnEOF);          ## ...unless this on, then return undef.
+    @Pending = ();              ## Contains characters to use as input.
+    @undo = ();                 ## Undo history starts empty for each line.
+    @undoGroupS = ();           ## Undo groups start empty for each line.
+    undef $memorizedArg;        ## No digitArgument memorized
+    undef $memorizedPos;        ## No position memorized
 
     undef $Vi_undo_state;
     undef $Vi_undo_all_state;
@@ -1350,7 +1370,7 @@ sub readline
         &F_ViInput();
         if ($rl_vi_replace_default_on_insert){
             local $^W=0;
-           my $Orig = $Term::ReadLine::Perl5::term->ornaments(); 
+            my $Orig = Term::ReadLine::TermCap::ornaments(__PACKAGE__);
            eval {
                # Term::ReadLine does not expose its $terminal, so make another
                require Term::Cap;
@@ -1359,12 +1379,14 @@ sub readline
                $terminal->Trequire('mr');
            };
            if (!$@ and $Orig ne ',,,'){
-               $Term::ReadLine::Perl5::term->ornaments
-                   (join(',', (split(/,/, $Orig))[0,1]) . ',mr,me') 
-           }
+               Term::ReadLine::TermCap::ornaments(__PACKAGE__,
+                                               join(',',
+                                                    (split(/,/, $Orig))[0,1])
+                                               . ',mr,me');
+        }
             my $F_SelfInsert_Real = \&F_SelfInsert;
             *F_SelfInsert = sub {
-               $Term::ReadLine::Perl5::term->ornaments($Orig); 
+                Term::ReadLine::TermCap::ornaments(__PACKAGE__);
                 &F_ViChangeEntireLine;
                 local $^W=0;
                 *F_SelfInsert = $F_SelfInsert_Real;
@@ -1372,7 +1394,7 @@ sub readline
             };
             my $F_ViEndInsert_Real = \&F_ViEndInsert;
             *F_ViEndInsert = sub {
-               $Term::ReadLine::Perl5::term->ornaments($Orig); 
+               Term::ReadLine::TermCap::ornaments(__PACKAGE__, $Orig);
                 local $^W=0;
                 *F_SelfInsert = $F_SelfInsert_Real;
                 *F_ViEndInsert = $F_ViEndInsert_Real;
@@ -1384,9 +1406,9 @@ sub readline
     }
 
     if ($rl_default_selected) {
-	redisplay_high();
+        redisplay_high();
     } else {
-	&redisplay();          ## Show the line (prompt+default at this point).
+        &redisplay();          ## Show the line (prompt+default at this point).
     }
 
     # pretend input if we 'Operate' on more than one line
@@ -1394,39 +1416,39 @@ sub readline
 
     $rl_first_char = 1;
     while (!defined($AcceptLine)) {
-	## get a character of input
-	$input = &getc_with_pending(); # bug in debugger, returns 42. - No more!
+        ## get a character of input
+        $input = &getc_with_pending(); # bug in debugger, returns 42. - No more!
 
-	unless (defined $input) {
-	  # XXX What to do???  Until this is clear, just pretend we got EOF
-	  $AcceptLine = $ReturnEOF = 1;
-	  last;
-	}
-	preserve_state();
+        unless (defined $input) {
+          # XXX What to do???  Until this is clear, just pretend we got EOF
+          $AcceptLine = $ReturnEOF = 1;
+          last;
+        }
+        preserve_state();
 
-	$ThisCommandKilledText = 0;
-	##print "\n\rline is @$D:[$line]\n\r"; ##DEBUG
-	my $cmd = get_command($var_EditingMode, ord($input));
-	if ( $rl_first_char && $cmd =~ /^F_(SelfInsert$|Yank)/
-	     && length $line && $rl_default_selected ) {
-	  # (Backward)?DeleteChar specialcased in the code
-	    $line = '';
-	    $D = 0;
-	    $cmd = 'F_BackwardDeleteChar' if $cmd eq 'F_DeleteChar';
-	}
-	undef $doingNumArg;
-	&$cmd(1, ord($input));			## actually execute input
-	$rl_first_char = 0;
-	$lastcommand = $cmd;
-	*KeyMap = $var_EditingMode;           # JP: added
+        $ThisCommandKilledText = 0;
+        ##print "\n\rline is @$D:[$line]\n\r"; ##DEBUG
+        my $cmd = get_command($var_EditingMode, ord($input));
+        if ( $rl_first_char && $cmd =~ /^F_(SelfInsert$|Yank)/
+             && length $line && $rl_default_selected ) {
+          # (Backward)?DeleteChar specialcased in the code
+            $line = '';
+            $D = 0;
+            $cmd = 'F_BackwardDeleteChar' if $cmd eq 'F_DeleteChar';
+        }
+        undef $doingNumArg;
+        &$cmd(1, ord($input));                  ## actually execute input
+        $rl_first_char = 0;
+        $lastcommand = $cmd;
+        *KeyMap = $var_EditingMode;           # JP: added
 
-	# In Vi command mode, don't position the cursor beyond the last
-	#     character of the line buffer.
-	&F_BackwardChar(1) if $Vi_mode and $line ne ''
-	    and &at_end_of_line and $KeyMap{'name'} eq 'vicmd_keymap';
+        # In Vi command mode, don't position the cursor beyond the last
+        #     character of the line buffer.
+        &F_BackwardChar(1) if $Vi_mode and $line ne ''
+            and &at_end_of_line and $KeyMap{'name'} eq 'vicmd_keymap';
 
-	&redisplay();
-	$LastCommandKilledText = $ThisCommandKilledText;
+        &redisplay();
+        $LastCommandKilledText = $ThisCommandKilledText;
     }
 
     undef @undo; ## Release the memory.
@@ -1448,7 +1470,7 @@ Returns the ordinal number for the corresponding control code.
 For example I<ctrl(ord('a'))> returns the ordinal for I<Ctrl-A>
 or 1. I<ctrl(ord('A'))> does the same thing.
 
-=cut 
+=cut
 
 sub ctrl {
   $_[0] ^ (($_[0]>=ord('a') && $_[0]<=ord('z')) ? 0x60 : 0x40);
@@ -1462,9 +1484,9 @@ sub SetTTY {
     if (defined $term_readkey) {
       Term::ReadKey::ReadMode(4, $term_IN);
       if ($^O eq 'MSWin32') {
-	# If we reached this, Perl isn't cygwin; Enter sends \r; thus we need binmode
-	# XXXX Do we need to undo???  $term_IN is most probably private now...
-	binmode $term_IN;
+        # If we reached this, Perl isn't cygwin; Enter sends \r; thus we need binmode
+        # XXXX Do we need to undo???  $term_IN is most probably private now...
+        binmode $term_IN;
       }
       return 1;
     }
@@ -1489,21 +1511,21 @@ sub SetTTY {
      warn <<EOW if $useioctl and not defined $ENV{PERL_READLINE_NOWARN};
 Can't ioctl TIOCGETP: $!
 Consider installing Term::ReadKey from CPAN site nearby
-	at http://www.perl.com/CPAN
+        at http://www.perl.com/CPAN
 Or use
-	perl -MCPAN -e shell
+        perl -MCPAN -e shell
 to reach CPAN. Falling back to 'stty'.
-	If you do not want to see this warning, set PERL_READLINE_NOWARN
+        If you do not want to see this warning, set PERL_READLINE_NOWARN
 in your environment.
 EOW
-					# '; # For Emacs. 
+                                        # '; # For Emacs.
      $useioctl = 0;
      system 'stty raw -echo' and ($usestty = 0, die "Cannot call `stty': $!");
      if ($^O eq 'MSWin32') {
-	# If we reached this, Perl isn't cygwin, but STTY is present ==> cygwin
-	# The symptoms: now Enter sends \r; thus we need binmode
-	# XXXX Do we need to undo???  $term_IN is most probably private now...
-	binmode $term_IN;
+        # If we reached this, Perl isn't cygwin, but STTY is present ==> cygwin
+        # The symptoms: now Enter sends \r; thus we need binmode
+        # XXXX Do we need to undo???  $term_IN is most probably private now...
+        binmode $term_IN;
      }
   }
   return 1;
@@ -1590,11 +1612,11 @@ sub substr_with_props {
     $s = $rl_term_set->[2] . $s . $rl_term_set->[3] if length $s;
   }
 
-  if (!$lp) {			# Should not happen...
+  if (!$lp) {                   # Should not happen...
     return $s;
-  } elsif (!length $s) {	# Should not happen
+  } elsif (!length $s) {        # Should not happen
     return $p;
-  } else {			# Do not underline spaces in the prompt
+  } else {                      # Do not underline spaces in the prompt
     return "$p$s"
       . (length $ket ? ($rl_term_set->[0] . $ket . $rl_term_set->[1]) : '');
   }
@@ -1603,7 +1625,7 @@ sub substr_with_props {
 sub redisplay_high {
   get_ornaments_selected();
   @$rl_term_set[2,3,4,5] = @$rl_term_set[4,5,2,3];
-  &redisplay();			## Show the line, default inverted.
+  &redisplay();                 ## Show the line, default inverted.
   @$rl_term_set[2,3,4,5] = @$rl_term_set[4,5,2,3];
   $force_redraw = 1;
 }
@@ -1626,12 +1648,13 @@ I<Note>: If an argument is given, it is used instead of the prompt.
 
 This is some nasty code.
 
-=cut 
+=cut
 
 sub redisplay
 {
     ## local $line has prompt also; take that into account with $D.
     local($prompt) = defined($_[0]) ? $_[0] : $prompt;
+    $prompt = '' unless defined($prompt);
     my ($thislen, $have_bra);
     my($dline) = $prompt . $line;
     local($D) = $D + length($prompt);
@@ -1648,33 +1671,33 @@ sub redisplay
     ##
     if ($dline =~ m/[^\x20-\x7e]/)
     {
-	local($new, $Dinc, $c) = ('', 0);
+        local($new, $Dinc, $c) = ('', 0);
 
-	## Look at each character of $dline in turn.....
+        ## Look at each character of $dline in turn.....
         for ($i = 0; $i < length($dline); $i++) {
-	    $c = substr($dline, $i, 1);
+            $c = substr($dline, $i, 1);
 
-	    ## A tab to expand...
-	    if ($c eq "\t") {
-		$c = ' ' x  (8 - (($i-length($prompt)) % 8));
+            ## A tab to expand...
+            if ($c eq "\t") {
+                $c = ' ' x  (8 - (($i-length($prompt)) % 8));
 
-	    ## A control character....
-	    } elsif ($c =~ tr/\000-\037//) {
-		$c = sprintf("^%c", ord($c)+ord('@'));
+            ## A control character....
+            } elsif ($c =~ tr/\000-\037//) {
+                $c = sprintf("^%c", ord($c)+ord('@'));
 
-	    ## the delete character....
-	    } elsif (ord($c) == 127) {
-		$c = '^?';
-	    }
-	    $new .= $c;
+            ## the delete character....
+            } elsif (ord($c) == 127) {
+                $c = '^?';
+            }
+            $new .= $c;
 
-	    ## Bump over $D if this char is expanded and left of $D.
-	    $Dinc += length($c) - 1 if (length($c) > 1 && $i < $D);
-	    ## Bump over $bsel if this char is expanded and left of $bsel.
-	    $bsel += length($c) - 1 if (defined $bsel && length($c) > 1 && $i < $bsel);
-	}
-	$dline = $new;
-	$D += $Dinc;
+            ## Bump over $D if this char is expanded and left of $D.
+            $Dinc += length($c) - 1 if (length($c) > 1 && $i < $D);
+            ## Bump over $bsel if this char is expanded and left of $bsel.
+            $bsel += length($c) - 1 if (defined $bsel && length($c) > 1 && $i < $bsel);
+        }
+        $dline = $new;
+        $D += $Dinc;
     }
 
     ##
@@ -1696,30 +1719,30 @@ sub redisplay
     ## the vicinity.
 
     # Now $si keeps the value from previous display
-    if ($D == length($prompt)	# If prompts fits exactly, show only if need not show trailing '>'
-	and length($prompt) < $rl_screen_width - (0 != length $dline)) {
-	$si = 0;   ## prefer displaying the whole prompt
-    } elsif ($si >= $D) {	# point to the left of what was displayed
-	$si = &max(0, $D - $rl_margin);
-	$si-- if $si > 0 && $si != length($prompt) && !&OnSecondByte($si);
+    if ($D == length($prompt)   # If prompts fits exactly, show only if need not show trailing '>'
+        and length($prompt) < $rl_screen_width - (0 != length $dline)) {
+        $si = 0;   ## prefer displaying the whole prompt
+    } elsif ($si >= $D) {       # point to the left of what was displayed
+        $si = &max(0, $D - $rl_margin);
+        $si-- if $si > 0 && $si != length($prompt) && !&OnSecondByte($si);
     } elsif ($si + $rl_screen_width <= $D) { # Point to the right of ...
-	$si = &min(length($dline), ($D - $rl_screen_width) + $rl_margin);
-	$si-- if $si > 0 && $si != length($prompt) && !&OnSecondByte($si);
+        $si = &min(length($dline), ($D - $rl_screen_width) + $rl_margin);
+        $si-- if $si > 0 && $si != length($prompt) && !&OnSecondByte($si);
     } elsif (length($dline) - $si < $rl_screen_width - $rl_margin and $si) {
         # Too little of the line shown
         $si = &max(0, length($dline) - $rl_screen_width + 3);
-	$si-- if $si > 0 && $si != length($prompt) && !&OnSecondByte($si);
+        $si-- if $si > 0 && $si != length($prompt) && !&OnSecondByte($si);
     } else {
-	## Fine as-is.... don't need to change $si.
+        ## Fine as-is.... don't need to change $si.
     }
     $have_bra = 1 if $si != 0; # Need the "chopped-off" marker
 
     $thislen = &min(length($dline) - $si, $rl_screen_width);
     if ($si + $thislen < length($dline)) {
-	## need to place a '>'... make sure to place on first byte.
-	$thislen-- if &OnSecondByte($si+$thislen-1);
-	substr($dline, $si+$thislen-1,1) = '>';
-	$have_ket = 1;
+        ## need to place a '>'... make sure to place on first byte.
+        $thislen-- if &OnSecondByte($si+$thislen-1);
+        substr($dline, $si+$thislen-1,1) = '>';
+        $have_ket = 1;
     }
 
     ##
@@ -1728,21 +1751,21 @@ sub redisplay
     ## with the cursor at $D-$si characters from the left edge.
     ##
     $dline = substr($dline, $si, $thislen);
-    $delta = $D - $si;	## delta is cursor distance from beginning of $dline.
-    if (defined $bsel) {	# Highlight the selected part
+    $delta = $D - $si;  ## delta is cursor distance from beginning of $dline.
+    if (defined $bsel) {        # Highlight the selected part
       $bsel -= $si;
       $esel = $delta;
       ($bsel, $esel) = ($esel, $bsel) if $bsel > $esel;
       $bsel = 0 if $bsel < 0;
       if ($have_ket) {
-	$esel = $thislen - 1 if $esel > $thislen - 1;
+        $esel = $thislen - 1 if $esel > $thislen - 1;
       } else {
-	$esel = $thislen if $esel > $thislen;
+        $esel = $thislen if $esel > $thislen;
       }
     }
     if ($si >= length($prompt)) { # Keep $dline for $lastredisplay...
       $prompt = ($have_bra ? "<" : "");
-      $dline = substr $dline, 1;	# After prompt
+      $dline = substr $dline, 1 if length($dline); # After prompt
       $bsel = 1 if defined $bsel and $bsel == 0;
     } else {
       $dline = substr($dline, (length $prompt) - $si);
@@ -1764,50 +1787,50 @@ sub redisplay
     ##
     if (not $force_redraw and not defined $bsel)
     {
-	## can try to optimize here a bit.
+        ## can try to optimize here a bit.
 
-	## For when we only need to move the cursor
-	if ($lastredisplay eq $dline and $lastpromptlen == length $prompt) {
-	    ## If we need to move forward, just overwrite as far as we need.
-	    if ($lastdelta < $delta) {
-		print $term_OUT 
-		  substr_with_props($prompt, $dline,
-				    $lastdelta, $delta-$lastdelta, $have_ket);
-	    ## Need to move back.
-	    } elsif($lastdelta > $delta) {
-		## Two ways to move back... use the fastest. One is to just
-		## backspace the proper amount. The other is to jump to the
-		## the beginning of the line and overwrite from there....
-		my $out = substr_with_props($prompt, $dline, 0, $delta, $have_ket);
-		if ($lastdelta - $delta <= length $out) {
-		    print $term_OUT "\b" x ($lastdelta - $delta);
-		} else {
-		    print $term_OUT "\r", $out;
-		}
-	    }
-	    ($lastlen, $lastredisplay, $lastdelta, $lastpromptlen)
-	      = ($thislen, $dline, $delta, length $prompt);
-	    # print $term_OUT "\a"; # Debugging
-	    return;
-	}
+        ## For when we only need to move the cursor
+        if ($lastredisplay eq $dline and $lastpromptlen == length $prompt) {
+            ## If we need to move forward, just overwrite as far as we need.
+            if ($lastdelta < $delta) {
+                print $term_OUT
+                  substr_with_props($prompt, $dline,
+                                    $lastdelta, $delta-$lastdelta, $have_ket);
+            ## Need to move back.
+            } elsif($lastdelta > $delta) {
+                ## Two ways to move back... use the fastest. One is to just
+                ## backspace the proper amount. The other is to jump to the
+                ## the beginning of the line and overwrite from there....
+                my $out = substr_with_props($prompt, $dline, 0, $delta, $have_ket);
+                if ($lastdelta - $delta <= length $out) {
+                    print $term_OUT "\b" x ($lastdelta - $delta);
+                } else {
+                    print $term_OUT "\r", $out;
+                }
+            }
+            ($lastlen, $lastredisplay, $lastdelta, $lastpromptlen)
+              = ($thislen, $dline, $delta, length $prompt);
+            # print $term_OUT "\a"; # Debugging
+            return;
+        }
 
-	## for when we've just added stuff to the end
-	if ($thislen > $lastlen &&
-	    $lastdelta == $lastlen &&
-	    $delta == $thislen &&
-	    $lastpromptlen == length($prompt) &&
-	    substr($dline, 0, $lastlen - $lastpromptlen) eq $lastredisplay)
-	{
-	    print $term_OUT substr_with_props($prompt, $dline,
-					      $lastdelta, undef, $have_ket);
-	    # print $term_OUT "\a"; # Debugging
-	    ($lastlen, $lastredisplay, $lastdelta, $lastpromptlen)
-	      = ($thislen, $dline, $delta, length $prompt);
-	    return;
-	}
+        ## for when we've just added stuff to the end
+        if ($thislen > $lastlen &&
+            $lastdelta == $lastlen &&
+            $delta == $thislen &&
+            $lastpromptlen == length($prompt) &&
+            substr($dline, 0, $lastlen - $lastpromptlen) eq $lastredisplay)
+        {
+            print $term_OUT substr_with_props($prompt, $dline,
+                                              $lastdelta, undef, $have_ket);
+            # print $term_OUT "\a"; # Debugging
+            ($lastlen, $lastredisplay, $lastdelta, $lastpromptlen)
+              = ($thislen, $dline, $delta, length $prompt);
+            return;
+        }
 
-	## There is much more opportunity for optimizing.....
-	## something to work on later.....
+        ## There is much more opportunity for optimizing.....
+        ## something to work on later.....
     }
 
     ##
@@ -1817,15 +1840,15 @@ sub redisplay
     print $term_OUT "\r", substr_with_props($prompt, $dline, 0, undef, $have_ket, $bsel, $esel);
     my $back = length ($dline) + length ($prompt) - $delta;
     $back += $lastlen - $thislen,
-	print $term_OUT ' ' x ($lastlen - $thislen) if $lastlen > $thislen;
+        print $term_OUT ' ' x ($lastlen - $thislen) if $lastlen and $lastlen > $thislen;
 
     if ($back) {
-	my $out = substr_with_props($prompt, $dline, 0, $delta, $have_ket, $bsel, $esel);
-	if ($back <= length $out and not defined $bsel) {
-	    print $term_OUT "\b" x $back;
-	} else {
-	    print $term_OUT "\r", $out;
-	}
+        my $out = substr_with_props($prompt, $dline, 0, $delta, $have_ket, $bsel, $esel);
+        if ($back <= length $out and not defined $bsel) {
+            print $term_OUT "\b" x $back;
+        } else {
+            print $term_OUT "\r", $out;
+        }
     }
 
     ($lastlen, $lastredisplay, $lastdelta, $lastpromptlen)
@@ -1847,17 +1870,17 @@ sub getc_with_pending {
 }
 
 sub rl_getc {
-	  my $key;                        # JP: Added missing declaration
-	  if (defined $term_readkey) { # XXXX ???
-	    $Term::ReadLine::Perl5::term->Tk_loop 
-	      if $Term::ReadLine::toloop && defined &Tk::DoOneEvent;
-	    $key = Term::ReadKey::ReadKey(0, $term_IN);
-	  } else {
-	    $key = $Term::ReadLine::Perl5::term->get_c;
-	  }
+          my $key;                        # JP: Added missing declaration
+          if (defined $term_readkey) { # XXXX ???
+            $Term::ReadLine::Perl5::term->Tk_loop
+              if $Term::ReadLine::toloop && defined &Tk::DoOneEvent;
+            $key = Term::ReadKey::ReadKey(0, $term_IN);
+          } else {
+            $key = $Term::ReadLine::Perl5::term->get_c;
+          }
 }
 
-=head2 get_command 
+=head2 get_command
 
 C<get_command(*keymap, $ord_command_char)>
 
@@ -1865,7 +1888,7 @@ If the C<*keymap>) has an entry for C<$ord_command_char>, it is returned.
 Otherwise, the default command in C<$Keymap{'default'}> is returned if that
 exists. If C<$Keymap{'default'}> is false, C<'F_Ding'> is returned.
 
-=cut 
+=cut
 
 sub get_command
 {
@@ -1874,8 +1897,8 @@ sub get_command
     my $cmd = defined($KeyMap[$key]) ? $KeyMap[$key]
                                      : ($KeyMap{'default'} || 'F_Ding');
     if (!defined($cmd) || $cmd eq ''){
-	warn "internal error (key=$key)";
-	$cmd = 'F_Ding';
+        warn "internal error (key=$key)";
+        $cmd = 'F_Ding';
     }
     $cmd
 }
@@ -1887,14 +1910,14 @@ C<do_command(*keymap, $numericarg, $key)>
 If the C<*keymap> has an entry for C<$key>, it is executed.
 Otherwise, the default command for the keymap is executed.
 
-=cut 
+=cut
 
 sub do_command
 {
     my ($keymap, $count, $key) = @_;
     my $cmd = get_command($keymap, $key);
 
-    local *KeyMap = $keymap;		# &$cmd may expect it...
+    local *KeyMap = $keymap;            # &$cmd may expect it...
     &$cmd($count, $key);
     $lastcommand = $cmd;
 }
@@ -1918,7 +1941,7 @@ sub savestate
 
 C<preserve_tate()>
 
-=cut 
+=cut
 
 sub preserve_state {
     return if $Vi_mode;
@@ -1926,11 +1949,11 @@ sub preserve_state {
     my $last = $undo[-1];
     my @only_movement;
     if ( #$last->[1] == $si and $last->[2] eq $LastCommandKilledText
-	 # and $last->[3] eq $KillBuffer and
-	 $last->[4] eq $line ) {
-	# Only position changed; remove old only-position-changed records
-	pop @undo if $undo[-1]->[5];
-	@only_movement = 1;
+         # and $last->[3] eq $KillBuffer and
+         $last->[4] eq $line ) {
+        # Only position changed; remove old only-position-changed records
+        pop @undo if $undo[-1]->[5];
+        @only_movement = 1;
     }
     push(@undo, savestate(@only_movement));
 }
@@ -1949,10 +1972,10 @@ sub F_SelfInsert
     my ($count, $ord) = @_;
     my $text2add = pack('C', $ord) x $count;
     if ($InsertMode) {
-	substr($line,$D,0) .= $text2add;
+        substr($line,$D,0) .= $text2add;
     } else {
-	## note: this can screw up with 2-byte characters.
-	substr($line,$D,length($text2add)) = $text2add;
+        ## note: this can screw up with 2-byte characters.
+        substr($line,$D,length($text2add)) = $text2add;
     }
     $D += length($text2add);
 }
@@ -1961,7 +1984,7 @@ sub F_SelfInsert
 
 Return the line as-is to the user.
 
-=cut 
+=cut
 
 sub F_AcceptLine
 {
@@ -1970,7 +1993,7 @@ sub F_AcceptLine
     local $\ = '';
     print $term_OUT "\r\n";
     $force_redraw = 0;
-    (pos $line) = undef;	# Another way to force redraw...
+    (pos $line) = undef;        # Another way to force redraw...
 }
 
 =head2 add_line_to_history
@@ -1983,7 +2006,7 @@ Insert into history list if:
 
 bigger than the minimal length
 
-=item * 
+=item *
 
 not same as last entry
 
@@ -1993,16 +2016,16 @@ not same as last entry
 
 sub add_line_to_history
 {
-    if (length($line) >= $minlength 
-	&& (!@rl_History || $rl_History[$#rl_History] ne $line)
+    if (length($line) >= $minlength
+        && (!@rl_History || $rl_History[$#rl_History] ne $line)
        ) {
-	## if the history list is full, shift out an old one first....
-	while (@rl_History >= $rl_MaxHistorySize) {
-	    shift(@rl_History);
-	    $rl_HistoryIndex--;
-	}
+        ## if the history list is full, shift out an old one first....
+        while (@rl_History >= $rl_MaxHistorySize) {
+            shift(@rl_History);
+            $rl_HistoryIndex--;
+        }
 
-	push(@rl_History, $line); ## tack new one on the end
+        push(@rl_History, $line); ## tack new one on the end
     }
 }
 
@@ -2020,98 +2043,11 @@ sub remove_selection {
     return;
 }
 
-#sub F_ReReadInitFile;
-#sub rl_getc;
-sub F_ForwardChar;
-sub F_BackwardChar;
-sub F_BeginningOfLine;
-sub F_EndOfLine;
-sub F_ForwardWord;
-sub F_BackwardWord;
-sub F_RedrawCurrentLine;
-sub F_ClearScreen;
-# sub F_SelfInsert;
-sub F_QuotedInsert;
-sub F_TabInsert;
-#sub F_AcceptLine;
-sub F_OperateAndGetNext;
-sub F_BackwardDeleteChar;
-sub F_DeleteChar;
-sub F_UnixWordRubout;
-sub F_UnixLineDiscard;
-sub F_UpcaseWord;
-sub F_DownCaseWord;
-sub F_CapitalizeWord;
-sub F_TransposeWords;
-sub F_TransposeChars;
-sub F_PreviousHistory;
-sub F_NextHistory;
-sub F_BeginningOfHistory;
-sub F_EndOfHistory;
-sub F_ReverseSearchHistory;
-sub F_ForwardSearchHistory;
-sub F_HistorySearchBackward;
-sub F_HistorySearchForward;
-sub F_KillLine;
-sub F_BackwardKillLine;
-sub F_Yank;
-sub F_YankPop;
-sub F_YankNthArg;
-sub F_KillWord;
-sub F_BackwardKillWord;
-sub F_Abort;
-sub F_DoLowercaseVersion;
-sub F_DoMetaVersion;
-sub F_DoControlVersion;
-sub F_Undo;
-sub F_RevertLine;
-sub F_EmacsEditingMode;
-sub F_Interrupt;
-sub F_PrefixMeta;
-sub F_UniversalArgument;
-sub F_DigitArgument;
-sub F_OverwriteMode;
-sub F_InsertMode;
-sub F_ToggleInsertMode;
-sub F_Suspend;
-sub F_Ding;
-sub F_PossibleCompletions;
-sub F_Complete;
-sub F_YankClipboard;
-sub F_CopyRegionAsKillClipboard;
-sub F_KillRegionClipboard;
-sub clipboard_set;
-sub F_BeginUndoGroup;
-sub F_EndUndoGroup;
-sub F_DoNothing;
-sub F_ForceMemorizeDigitArgument;
-sub F_MemorizeDigitArgument;
-sub F_UnmemorizeDigitArgument;
-sub F_ResetDigitArgument;
-sub F_MergeInserts;
-sub F_MemorizePos;
-sub F_BeginPasteGroup;
-sub F_EndPasteGroup;
-sub F_BeginEditGroup;
-sub F_EndEditGroup;
-
-# Comment next line and __DATA__ line below to disable the selfloader.
-
-use SelfLoader;
-
-1;
-
-__DATA__
-
-# From here on anything may be autoloaded
-
 sub max     { $_[0] > $_[1] ? $_[0] : $_[1]; }
 sub isupper { ord($_[0]) >= ord('A') && ord($_[0]) <= ord('Z'); }
 sub islower { ord($_[0]) >= ord('a') && ord($_[0]) <= ord('z'); }
-sub toupper { &islower ? pack('c', ord($_[0])-ord('a')+ord('A')) : $_[0];}
-sub tolower { &isupper ? pack('c', ord($_[0])-ord('A')+ord('a')) : $_[0];}
 
-=head2 rl_set 
+=head2 rl_set
 
 C<rl_set($var_name, $value_string)>
 
@@ -2162,20 +2098,20 @@ sub rl_set
     local($return) = undef;
     s/-(.)/\u$1/g;
 
-    # Skip unknown variables: 
+    # Skip unknown variables:
     return unless defined $ {'readline::'}{"var_$_"};
     local(*V);    # avoid <Undefined value assign to typeglob> warning
     { local $^W; *V = $ {'readline::'}{"var_$_"}; }
-    if (!defined($V)) {			# XXX Duplicate check?
-	warn("Warning$InputLocMsg:\n".
-	     "  Invalid variable `$var'\n") if $^W;
+    if (!defined($V)) {                 # XXX Duplicate check?
+        warn("Warning$InputLocMsg:\n".
+             "  Invalid variable `$var'\n") if $^W;
     } elsif (!defined($V{$val})) {
-	local(@selections) = keys(%V);
-	warn("Warning$InputLocMsg:\n".
-	     "  Invalid value `$val' for variable `$var'.\n".
-	     "  Choose from [@selections].\n") if $^W;
+        local(@selections) = keys(%V);
+        warn("Warning$InputLocMsg:\n".
+             "  Invalid value `$val' for variable `$var'.\n".
+             "  Choose from [@selections].\n") if $^W;
     } else {
-	$return = $V;
+        $return = $V;
         $V = $V{$val}; ## make the setting
     }
     $return;
@@ -2188,7 +2124,7 @@ C<OnSecondByte($index)>
 Returns true if the byte at C<$index> into C<$line> is the second byte
 of a two-byte character.
 
-=cut 
+=cut
 
 sub OnSecondByte
 {
@@ -2203,10 +2139,10 @@ sub OnSecondByte
     ##
     local($i);
     for ($i = 0; $i < $_[0]; $i++) {
-	next if ord(substr($line, $i, 1)) < 0x80;
-	## We have the first byte... must bump up $i to skip past the 2nd.
-	## If that one we're skipping past is the index, it should be changed
-	## to point to the first byte of the pair (therefore, decremented).
+        next if ord(substr($line, $i, 1)) < 0x80;
+        ## We have the first byte... must bump up $i to skip past the 2nd.
+        ## If that one we're skipping past is the index, it should be changed
+        ## to point to the first byte of the pair (therefore, decremented).
         return 1 if ++$i == $_[0];
     }
     0; ## seemed to be OK.
@@ -2218,20 +2154,23 @@ sub OnSecondByte
 C<CharSize($index)>
 
 Returns the size of the character at the given C<$index> in the
-current line.  Most characters are just one byte in length,
-but if the byte at the index and the one after has the high
-bit set those two bytes are one character of size=2.
+current line.  Most characters are just one byte in length.  However,
+if the byte at the index and the one after both have the high bit set
+and $_rl_japanese_mb is set, those two bytes are one character of size
+two.
 
 Assumes that C<$index> points to the first of a 2-byte char if not
-pointing to a 2-byte char.
+pointing to a 1-byte char.
 
-=cut 
+TODO: handle Unicode
 
+=cut
 sub CharSize
 {
+    my $index = shift;
     return 2 if $_rl_japanese_mb &&
-		ord(substr($line, $_[0],   1)) >= 0x80 &&
-                ord(substr($line, $_[0]+1, 1)) >= 0x80;
+                ord(substr($line, $index,   1)) >= 0x80 &&
+                ord(substr($line, $index+1, 1)) >= 0x80;
     1;
 }
 
@@ -2258,7 +2197,7 @@ sub ___SetTTY
     &XonTTY;
 
     &GetTTY
-	if !defined($base_termios);
+        if !defined($base_termios);
 
     @termios = unpack($termios_t,$base_termios);
     $termios[$TERMIOS_IFLAG] |= $TERMIOS_READLINE_ION;
@@ -2303,12 +2242,15 @@ sub ___ResetTTY
 # system 'stty -a';
 }
 
-##
-## WordBreak(index)
-##
-## Returns true if the character at INDEX into $line is a basic word break
-## character, false otherwise.
-##
+=head2 WordBreak
+
+C<WordBreak(index)>
+
+Returns true if the character at I<index> into $line is a basic word
+break character, false otherwise.
+
+=cut
+
 sub WordBreak
 {
     index($rl_basic_word_break_characters, substr($line,$_[0],1)) != -1;
@@ -2320,28 +2262,31 @@ sub getstate
     $ThisCommandKilledText = $LastCommandKilledText;
 }
 
-##
-## kills from D=$_[0] to $_[1] (to the killbuffer if $_[2] is true)
-##
+=head2 kill_text
+
+kills from D=$_[0] to $_[1] (to the killbuffer if $_[2] is true)
+
+=cut
+
 sub kill_text
 {
     my($from, $to, $save) = (&min($_[0], $_[1]), &max($_[0], $_[1]), $_[2]);
     my $len = $to - $from;
     if ($save) {
-	$KillBuffer = '' if !$LastCommandKilledText;
-	if ($from < $LastCommandKilledText - 1) {
-	  $KillBuffer = substr($line, $from, $len) . $KillBuffer;
-	} else {
-	  $KillBuffer .= substr($line, $from, $len);
-	}
-	$ThisCommandKilledText = 1 + $from;
+        $KillBuffer = '' if !$LastCommandKilledText;
+        if ($from < $LastCommandKilledText - 1) {
+          $KillBuffer = substr($line, $from, $len) . $KillBuffer;
+        } else {
+          $KillBuffer .= substr($line, $from, $len);
+        }
+        $ThisCommandKilledText = 1 + $from;
     }
     substr($line, $from, $len) = '';
 
     ## adjust $D
     if ($D > $from) {
-	$D -= $len;
-	$D = $from if $D < $from;
+        $D -= $len;
+        $D = $from if $D < $from;
     }
 }
 
@@ -2350,62 +2295,80 @@ sub kill_text
 ## Bindable functions... pretty much in the same order as in readline.c ###
 ###########################################################################
 
-##
-## Returns true if $D at the end of the line.
-##
+=head2 at_end_of_line
+
+Returns true if $D at the end of the line.
+
+=cut
+
 sub at_end_of_line
 {
     ($D + &CharSize($D)) == (length($line) + 1);
 }
 
+=head2 F_ForwardChar
 
-##
-## Move forward (right) $count characters.
-##
+Move forward (right) $count characters.
+
+=cut
+
 sub F_ForwardChar
 {
     my $count = shift;
     return &F_BackwardChar(-$count) if $count < 0;
 
     while (!&at_end_of_line && $count-- > 0) {
-	$D += &CharSize($D);
+        $D += &CharSize($D);
     }
 }
 
-##
-## Move backward (left) $count characters.
-##
+=head2 F_BackwaredChar
+
+Move backward (left) $count characters.
+
+=cut
+
 sub F_BackwardChar
 {
     my $count = shift;
     return &F_ForwardChar(-$count) if $count < 0;
 
     while (($D > 0) && ($count-- > 0)) {
-	$D--;  		           ## Move back one regardless,
-	$D-- if &OnSecondByte($D); ## another if over a big char.
+        $D--;                      ## Move back one regardless,
+        $D-- if &OnSecondByte($D); ## another if over a big char.
     }
 }
 
-##
-## Go to beginning of line.
-##
+=head2 F_BeginningOfLine
+
+Go to beginning of line.
+
+=cut
+
 sub F_BeginningOfLine
 {
     $D = 0;
 }
 
-##
-## Move to the end of the line.
-##
+=head2 F_EndOfLine
+
+Move to the end of the line.
+
+=cut
+
 sub F_EndOfLine
 {
     &F_ForwardChar(100) while !&at_end_of_line;
 }
 
-##
-## Move to the end of this/next word.
-## Done as many times as $count says.
-##
+
+=head2 F_ForwardWord
+
+Move to the end of this/next word.
+Done as many times as $count says.
+
+=cut
+
 sub F_ForwardWord
 {
     my $count = shift;
@@ -2413,43 +2376,51 @@ sub F_ForwardWord
 
     while (!&at_end_of_line && $count-- > 0)
     {
-	## skip forward to the next word (if not already on one)
-	&F_ForwardChar(1) while !&at_end_of_line && &WordBreak($D);
-	## skip forward to end of word
-	&F_ForwardChar(1) while !&at_end_of_line && !&WordBreak($D);
+        ## skip forward to the next word (if not already on one)
+        &F_ForwardChar(1) while !&at_end_of_line && &WordBreak($D);
+        ## skip forward to end of word
+        &F_ForwardChar(1) while !&at_end_of_line && !&WordBreak($D);
     }
 }
 
-##
-## 
-## Move to the beginning of this/next word.
-## Done as many times as $count says.
-##
+=head2 F_BackwardWord
+
+Move to the beginning of this/next word.
+Done as many times as $count says.
+
+=cut
+
 sub F_BackwardWord
 {
     my $count = shift;
     return &F_ForwardWord(-$count) if $count < 0;
 
     while ($D > 0 && $count-- > 0) {
-	## skip backward to the next word (if not already on one)
-	&F_BackwardChar(1) while (($D > 0) && &WordBreak($D-1));
-	## skip backward to start of word
-	&F_BackwardChar(1) while (($D > 0) && !&WordBreak($D-1));
+        ## skip backward to the next word (if not already on one)
+        &F_BackwardChar(1) while (($D > 0) && &WordBreak($D-1));
+        ## skip backward to start of word
+        &F_BackwardChar(1) while (($D > 0) && !&WordBreak($D-1));
     }
 }
 
-##
-## Refresh the input line.
-##
+=head2 F_RedrawCurrentLine
+
+Refresh the input line.
+
+=cut
+
 sub F_RedrawCurrentLine
 {
     $force_redraw = 1;
 }
 
-##
-## Clear the screen and refresh the line.
-## If given a numeric arg other than 1, simply refreshes the line.
-##
+=head2 F_ClearScreen
+
+Clear the screen and refresh the line.
+If given a numeric arg other than 1, simply refreshes the line.
+
+=cut
+
 sub F_ClearScreen
 {
     my $count = shift;
@@ -2461,26 +2432,37 @@ sub F_ClearScreen
     $force_redraw = 1;
 }
 
-##
-## Insert the next character read verbatim.
-##
+=head2 F_QuotedInsert
+
+Insert the next character read verbatim.
+
+=cut
+
 sub F_QuotedInsert
 {
     my $count = shift;
     &F_SelfInsert($count, ord(&getc_with_pending));
 }
 
-##
-## Insert a tab.
-##
+=head2 F_TabInsert
+
+Insert a tab.
+
+=cut
+
 sub F_TabInsert
 {
     my $count = shift;
     &F_SelfInsert($count, ord("\t"));
 }
 
-## Operate - accept the current line and fetch from the
-## history the next line relative to current line for default.
+=head2 F_OperateAndGetNext
+
+Accept the current line and fetch from the history the next line
+relative to current line for default.
+
+=cut
+
 sub F_OperateAndGetNext
 {
     my $count = shift;
@@ -2489,18 +2471,21 @@ sub F_OperateAndGetNext
 
     my $remainingEntries = $#rl_History - $rl_HistoryIndex;
     if ($count > 0 && $remainingEntries >= 0) {  # there is something to repeat
-	if ($remainingEntries > 0) {  # if we are not on last line
-	    $rl_HistoryIndex++;       # fetch next one
-	    $count = $remainingEntries if $count > $remainingEntries;
-	}
-	$rl_OperateCount = $count;
+        if ($remainingEntries > 0) {  # if we are not on last line
+            $rl_HistoryIndex++;       # fetch next one
+            $count = $remainingEntries if $count > $remainingEntries;
+        }
+        $rl_OperateCount = $count;
     }
 }
 
-##
-## Removes $count chars to left of cursor (if not at beginning of line).
-## If $count > 1, deleted chars saved to kill buffer.
-##
+=head2 F_BackwaredDeleteChar
+
+Removes $count chars to left of cursor (if not at beginning of line).
+If $count > 1, deleted chars saved to kill buffer.
+
+=cut
+
 sub F_BackwardDeleteChar
 {
     return if remove_selection();
@@ -2513,28 +2498,31 @@ sub F_BackwardDeleteChar
     &kill_text($oldD, $D, $count > 1);
 }
 
-##
-## Removes the $count chars from under the cursor.
-## If there is no line and the last command was different, tells
-## readline to return EOF.
-## If there is a line, and the cursor is at the end of it, and we're in
-## tcsh completion mode, then list possible completions.
-## If $count > 1, deleted chars saved to kill buffer.
-##
+=head2 F_DeleteChar
+
+Removes the $count chars from under the cursor.
+If there is no line and the last command was different, tells
+readline to return EOF.
+If there is a line, and the cursor is at the end of it, and we're in
+tcsh completion mode, then list possible completions.
+If $count > 1, deleted chars saved to kill buffer.
+
+=cut
+
 sub F_DeleteChar
 {
     return if remove_selection();
 
     my $count = shift;
     return F_DeleteBackwardChar(-$count) if $count < 0;
-    if (length($line) == 0) {	# EOF sent (probably OK in DOS too)
-	$AcceptLine = $ReturnEOF = 1 if $lastcommand ne 'F_DeleteChar';
-	return;
+    if (length($line) == 0) {   # EOF sent (probably OK in DOS too)
+        $AcceptLine = $ReturnEOF = 1 if $lastcommand ne 'F_DeleteChar';
+        return;
     }
     if ($D == length ($line))
     {
-	&complete_internal('?') if $var_TcshCompleteMode;
-	return;
+        &complete_internal('?') if $var_TcshCompleteMode;
+        return;
     }
     my $oldD = $D;
     &F_ForwardChar($count);
@@ -2542,21 +2530,27 @@ sub F_DeleteChar
     &kill_text($oldD, $D, $count > 1);
 }
 
-##
-## Kill to previous whitespace.
-##
+=head2 F_UnixWordRubout
+
+Kill to previous whitespace.
+
+=cut
+
 sub F_UnixWordRubout
 {
     return &F_Ding if $D == 0;
     (my $oldD, local $rl_basic_word_break_characters) = ($D, "\t ");
-			     # JP:  Fixed a bug here - both were 'my'
+                             # JP:  Fixed a bug here - both were 'my'
     F_BackwardWord(1);
     kill_text($D, $oldD, 1);
 }
 
-##
-## Kill line from cursor to beginning of line.
-##
+=head2 F_UnixLineDiscard
+
+Kill line from cursor to beginning of line.
+
+=cut
+
 sub F_UnixLineDiscard
 {
     return &F_Ding if $D == 0;
@@ -2571,7 +2565,7 @@ sub F_CapitalizeWord { &changecase($_[0], 'cap');  }
 ## Translated from GNUs readline.c
 ## One arg is 'up' to upcase $_[0] words,
 ##            'down' to downcase them,
-##         or something else to capitolize them.
+##         or something else to capitalize them.
 ## If $_[0] is negative, the dot is not moved.
 ##
 sub changecase
@@ -2581,31 +2575,31 @@ sub changecase
     my ($start, $state, $c, $olddot) = ($D, 0);
     if ($_[0] < 0)
     {
-	$olddot = $D;
-	$_[0] = -$_[0];
+        $olddot = $D;
+        $_[0] = -$_[0];
     }
 
     &F_ForwardWord;  ## goes forward $_[0] words.
 
     while ($start < $D) {
-	$c = substr($line, $start, 1);
+        $c = substr($line, $start, 1);
 
-	if ($op eq 'up') {
-	    $c = &toupper($c);
-	} elsif ($op eq 'down') {
-	    $c = &tolower($c);
-	} else { ## must be 'cap'
-	    if ($state == 1) {
-	        $c = &tolower($c);
-	    } else {
-	        $c = &toupper($c);
-		$state = 1;
-	    }
-	    $state = 0 if $c !~ tr/a-zA-Z//;
-	}
+        if ($op eq 'up') {
+            $c = uc $c;
+        } elsif ($op eq 'down') {
+            $c = lc $c;
+        } else { ## must be 'cap'
+            if ($state == 1) {
+                $c = lc $c;
+            } else {
+                $c = uc $c;
+                $state = 1;
+            }
+            $state = 0 if $c !~ tr/a-zA-Z//;
+        }
 
-	substr($line, $start, 1) = $c;
-	$start++;
+        substr($line, $start, 1) = $c;
+        $start++;
     }
     $D = $olddot if defined($olddot);
 }
@@ -2650,9 +2644,9 @@ sub F_TransposeChars
     if ($D == length($line) && $D >= 2) {
         substr($line,$D-2,2) = substr($line,$D-1,1).substr($line,$D-2,1);
     } elsif ($D >= 1) {
-	substr($line,$D-1,2) = substr($line,$D,1)  .substr($line,$D-1,1);
+        substr($line,$D-1,2) = substr($line,$D,1)  .substr($line,$D-1,1);
     } else {
-	&F_Ding;
+        &F_Ding;
     }
 }
 
@@ -2697,9 +2691,9 @@ sub F_HistorySearchForward
 }
 
 ## returns a new $i or -1 if not found.
-sub search { 
+sub search {
   my ($i, $str) = @_;
-  return -1 if $i < 0 || $i > $#rl_History; 	 ## for safety
+  return -1 if $i < 0 || $i > $#rl_History;      ## for safety
   while (1) {
     return $i if rindex($rl_History[$i], $str) >= 0;
     if ($reverse) {
@@ -2712,75 +2706,75 @@ sub search {
 
 sub DoSearch
 {
-    local $reverse = shift;	# Used in search()
+    local $reverse = shift;     # Used in search()
     my $oldline = $line;
     my $oldD = $D;
 
     my $searchstr = '';  ## string we're searching for
-    my $I = -1;  	     ## which history line
+    my $I = -1;              ## which history line
 
     $si = 0;
 
     while (1)
     {
-	if ($I != -1) {
-	    $line = $rl_History[$I];
-	    $D += index($rl_History[$I], $searchstr);
-	}
-	&redisplay( '('.($reverse?'reverse-':'') ."i-search) `$searchstr': ");
+        if ($I != -1) {
+            $line = $rl_History[$I];
+            $D += index($rl_History[$I], $searchstr);
+        }
+        &redisplay( '('.($reverse?'reverse-':'') ."i-search) `$searchstr': ");
 
-	$c = &getc_with_pending;
-	if (($KeyMap[ord($c)] || 0) eq 'F_ReverseSearchHistory') {
-	    if ($reverse && $I != -1) {
-		if ($tmp = &search($I-1,$searchstr), $tmp >= 0) {
-		    $I = $tmp;
-		} else {
-		    &F_Ding;
-		}
-	    }
-	    $reverse = 1;
-	} elsif (($KeyMap[ord($c)] || 0) eq 'F_ForwardSearchHistory') {
-	    if (!$reverse && $I != -1) {
-		if ($tmp = &search($I+1,$searchstr), $tmp >= 0) {
-		    $I = $tmp;
-		} else {
-		    &F_Ding;
-		}
-	    }
-	    $reverse = 0;
+        $c = &getc_with_pending;
+        if (($KeyMap[ord($c)] || 0) eq 'F_ReverseSearchHistory') {
+            if ($reverse && $I != -1) {
+                if ($tmp = &search($I-1,$searchstr), $tmp >= 0) {
+                    $I = $tmp;
+                } else {
+                    &F_Ding;
+                }
+            }
+            $reverse = 1;
+        } elsif (($KeyMap[ord($c)] || 0) eq 'F_ForwardSearchHistory') {
+            if (!$reverse && $I != -1) {
+                if ($tmp = &search($I+1,$searchstr), $tmp >= 0) {
+                    $I = $tmp;
+                } else {
+                    &F_Ding;
+                }
+            }
+            $reverse = 0;
         } elsif ($c eq "\007") {  ## abort search... restore line and return
-	    $line = $oldline;
-	    $D = $oldD;
-	    return;
+            $line = $oldline;
+            $D = $oldD;
+            return;
         } elsif (ord($c) < 32 || ord($c) > 126) {
-	    push(@Pending, $c) if $c ne "\e";
-	    if ($I < 0) {
-		## just restore
-		$line = $oldline;
-		$D = $oldD;
-	    } else {
-		#chose this line
-		$line = $rl_History[$I];
-		$D = index($rl_History[$I], $searchstr);
-	    }
-	    &redisplay();
-	    last;
-	} else {
-	    ## Add this character to the end of the search string and
-	    ## see if that'll match anything.
-	    $tmp = &search($I < 0 ? $rl_HistoryIndex-$reverse: $I, $searchstr.$c);
-	    if ($tmp == -1) {
-		&F_Ding;
-	    } else {
-		$searchstr .= $c;
-		$I = $tmp;
-	    }
-	}
+            push(@Pending, $c) if $c ne "\e";
+            if ($I < 0) {
+                ## just restore
+                $line = $oldline;
+                $D = $oldD;
+            } else {
+                #chose this line
+                $line = $rl_History[$I];
+                $D = index($rl_History[$I], $searchstr);
+            }
+            &redisplay();
+            last;
+        } else {
+            ## Add this character to the end of the search string and
+            ## see if that'll match anything.
+            $tmp = &search($I < 0 ? $rl_HistoryIndex-$reverse: $I, $searchstr.$c);
+            if ($tmp == -1) {
+                &F_Ding;
+            } else {
+                $searchstr .= $c;
+                $I = $tmp;
+            }
+        }
     }
 }
 
 ## returns a new $i or -1 if not found.
-sub searchStart { 
+sub searchStart {
   my ($i, $reverse, $str) = @_;
   $i += $reverse ? - 1: +1;
   return -1 if $i < 0 || $i > $#rl_History;  ## for safety
@@ -2809,9 +2803,12 @@ sub DoSearchStart
 ###########################################################################
 ###########################################################################
 
-##
-## Kill from cursor to end of line.
-##
+=head2 F_KillLine
+
+delete characters from cursor to end of line.
+
+=cut
+
 sub F_KillLine
 {
     my $count = shift;
@@ -2819,9 +2816,12 @@ sub F_KillLine
     kill_text($D, length($line), 1);
 }
 
-##
-## Delete from cursor to beginning of line.
-##
+=head2 F_BackwardKillLine
+
+Delete characters from cursor to beginning of line.
+
+=cut
+
 sub F_BackwardKillLine
 {
     my $count = shift;
@@ -2830,9 +2830,12 @@ sub F_BackwardKillLine
     kill_text(0, $D, 1);
 }
 
-##
-## TextInsert(count, string)
-##
+=head2 TextInsert
+
+C<TextInsert($count, $string)>
+
+=cut
+
 sub TextInsert {
   my $count = shift;
   my $text2add = shift(@_) x $count;
@@ -2860,30 +2863,35 @@ sub F_YankNthArg {
    ## not implemented yet
 }
 
-##
-## Kill to the end of the current word. If not on a word, kill to
+=head2 F_KillWord
+
+Delete characters to the end of the current word. If not on a word, delete to
 ## the end of the next word.
-##
+
+=cut
+
 sub F_KillWord
 {
     my $count = shift;
     return &F_BackwardKillWord(-$count) if $count < 0;
     my $oldD = $D;
-    &F_ForwardWord($count);	## moves forward $count words.
+    &F_ForwardWord($count);     ## moves forward $count words.
     kill_text($oldD, $D, 1);
 }
 
-##
-## Kill backward to the start of the current word, or, if currently
+=head2 F_BackwardKillWord
+
+Delete characters backward to the start of the current word, or, if currently
 ## not on a word (or just at the start of a word), to the start of the
 ## previous word.
-##
+
+=cut
 sub F_BackwardKillWord
 {
     my $count = shift;
     return F_KillWord(-$count) if $count < 0;
     my $oldD = $D;
-    &F_BackwardWord($count);	## moves backward $count words.
+    &F_BackwardWord($count);    ## moves backward $count words.
     kill_text($D, $oldD, 1);
 }
 
@@ -2891,47 +2899,61 @@ sub F_BackwardKillWord
 ###########################################################################
 
 
-##
-## Abort the current input.
-##
+=head2 F_Abort
+
+Abort the current input.
+
+=cut
 sub F_Abort
 {
     &F_Ding;
 }
 
 
-##
-## If the character that got us here is upper case,
-## do the lower-case equiv...
-##
+=head2 F_DoLowercaseVersion
+
+If the character that got us here is upper case,
+do the lower-case equivalent command.
+
+=cut
+
 sub F_DoLowercaseVersion
 {
-    if ($_[1] >= ord('A') && $_[1] <= ord('Z')) {
-	&do_command(*KeyMap, $_[0], $_[1] - ord('A') + ord('a'));
+    my $c = $_[1];
+    if (isupper($c)) {
+        &do_command(*KeyMap, $_[0], lc($c));
     } else {
-	&F_Ding;
+        &F_Ding;
     }
 }
 
-##
-## do the equiv with control key...
-##
+=head2 F_DoControlVersion
+
+do the equiv with control key...
+If the character that got us here is upper case,
+do the lower-case equivalent command.
+
+=cut
+
 sub F_DoControlVersion
 {
     local *KeyMap = $var_EditingMode;
     my $key = $_[1];
 
     if ($key == ord('?')) {
-	$key = 0x7F;
+        $key = 0x7F;
     } else {
-	$key &= ~(0x80 | 0x60);
+        $key &= ~(0x80 | 0x60);
     }
     &do_command(*KeyMap, $_[0], $key);
 }
 
-##
-## do the equiv with meta key...
-##
+=head2 F_DoMetaVersion
+
+do the equiv with meta key...
+
+=cut
+
 sub F_DoMetaVersion
 {
     local *KeyMap = $var_EditingMode;
@@ -2940,18 +2962,21 @@ sub F_DoMetaVersion
     &do_command(*KeyMap, $_[0], ord "\e");
 }
 
-##
-## If the character that got us here is Alt-Char,
-## do the Esc Char equiv...
-##
+=head2 F_DoEscVersion
+
+If the character that got us here is Alt-Char,
+do the Esc Char equiv...
+
+=cut
+
 sub F_DoEscVersion
 {
     my ($ord, $t) = $_[1];
     &F_Ding unless $KeyMap{'Esc'};
     for $t (([ord 'w', '`1234567890-='],
-	     [ord ',', 'zxcvbnm,./\\'],
-	     [16,      'qwertyuiop[]'],
-	     [ord(' ') - 2, 'asdfghjkl;\''])) {
+             [ord ',', 'zxcvbnm,./\\'],
+             [16,      'qwertyuiop[]'],
+             [ord(' ') - 2, 'asdfghjkl;\''])) {
       next unless $ord >= $t->[0] and $ord < $t->[0] + length($t->[1]);
       $ord = ord substr $t->[1], $ord - $t->[0], 1;
       return &do_command($KeyMap{'Esc'}, $_[0], $ord);
@@ -2959,28 +2984,35 @@ sub F_DoEscVersion
     &F_Ding;
 }
 
-##
-## Undo one level.
-##
+=head2 F_Undo
+
+Undo one level.
+
+
+=cut
+
 sub F_Undo
 {
     pop(@undo); # unless $undo[-1]->[5]; ## get rid of the state we just put on, so we can go back one.
     if (@undo) {
-	&getstate(pop(@undo));
+        &getstate(pop(@undo));
     } else {
-	&F_Ding;
+        &F_Ding;
     }
 }
 
-##
-## Replace the current line to some "before" state.
-##
+=head2 F_RevertLine
+
+Replace the current line to some "before" state.
+
+=cut
+
 sub F_RevertLine
 {
     if ($rl_HistoryIndex >= $#rl_History+1) {
-	$line = $line_for_revert;
+        $line = $line_for_revert;
     } else {
-	$line = $rl_History[$rl_HistoryIndex];
+        $line = $rl_History[$rl_HistoryIndex];
     }
     $D = length($line);
 }
@@ -3034,37 +3066,37 @@ sub F_DigitArgument
     my ($NumericArg, $sawDigit) = (1, 0);
     my ($increment, $ord);
     ($NumericArg, $sawDigit) = ($_[0], $_[0] !~ /e0$/i)
-	if $doingNumArg;	# XXX What if Esc-- 1 ?
+        if $doingNumArg;        # XXX What if Esc-- 1 ?
 
     do
     {
-	$ord = ord $in;
-	if (defined($KeyMap[$ord]) && $KeyMap[$ord] eq 'F_UniversalArgument') {
-	    $NumericArg *= 4;
-	} elsif ($ord == ord('-') && !$sawDigit) {
-	    $NumericArg = -$NumericArg;
-	} elsif ($ord >= ord('0') && $ord <= ord('9')) {
-	    $increment = ($ord - ord('0')) * ($NumericArg < 0 ? -1 : 1);
-	    if ($sawDigit) {
-		$NumericArg = $NumericArg * 10 + $increment;
-	    } else {
-		$NumericArg = $increment;
-		$sawDigit = 1;
-	    }
-	} else {
-	    local(*KeyMap) = $var_EditingMode;
-	    &redisplay();
-	    $doingNumArg = 1;		# Allow NumArg inside NumArg
-	    &do_command(*KeyMap, $NumericArg . ($sawDigit ? '': 'e0'), $ord);
-	    return;
-	}
-	## make sure it's not toooo big.
-	if ($NumericArg > $rl_max_numeric_arg) {
-	    $NumericArg = $rl_max_numeric_arg;
-	} elsif ($NumericArg < -$rl_max_numeric_arg) {
-	    $NumericArg = -$rl_max_numeric_arg;
-	}
-	&redisplay(sprintf("(arg %d) ", $NumericArg));
+        $ord = ord $in;
+        if (defined($KeyMap[$ord]) && $KeyMap[$ord] eq 'F_UniversalArgument') {
+            $NumericArg *= 4;
+        } elsif ($ord == ord('-') && !$sawDigit) {
+            $NumericArg = -$NumericArg;
+        } elsif ($ord >= ord('0') && $ord <= ord('9')) {
+            $increment = ($ord - ord('0')) * ($NumericArg < 0 ? -1 : 1);
+            if ($sawDigit) {
+                $NumericArg = $NumericArg * 10 + $increment;
+            } else {
+                $NumericArg = $increment;
+                $sawDigit = 1;
+            }
+        } else {
+            local(*KeyMap) = $var_EditingMode;
+            &redisplay();
+            $doingNumArg = 1;           # Allow NumArg inside NumArg
+            &do_command(*KeyMap, $NumericArg . ($sawDigit ? '': 'e0'), $ord);
+            return;
+        }
+        ## make sure it's not toooo big.
+        if ($NumericArg > $rl_max_numeric_arg) {
+            $NumericArg = $rl_max_numeric_arg;
+        } elsif ($NumericArg < -$rl_max_numeric_arg) {
+            $NumericArg = -$rl_max_numeric_arg;
+        }
+        &redisplay(sprintf("(arg %d) ", $NumericArg));
     } while defined($in = &getc_with_pending);
 }
 
@@ -3089,8 +3121,8 @@ sub F_ToggleInsertMode
 sub F_Suspend
 {
     if ($inDOS && length($line)==0) { # EOF sent
-	$AcceptLine = $ReturnEOF = 1 if $lastcommand ne 'F_DeleteChar';
-	return;
+        $AcceptLine = $ReturnEOF = 1 if $lastcommand ne 'F_DeleteChar';
+        return;
     }
     local $\ = '';
     print $term_OUT "\r\n";
@@ -3145,19 +3177,19 @@ sub F_InsertPossibleCompletions
 sub F_Complete
 {
     if ($lastcommand eq 'F_Complete') {
-	if ($var_TcshCompleteMode && @tcsh_complete_selections > 0) {
-	    substr($line, $tcsh_complete_start, $tcsh_complete_len)
-		= $tcsh_complete_selections[0];
-	    $D -= $tcsh_complete_len;
-	    $tcsh_complete_len = length($tcsh_complete_selections[0]);
-	    $D += $tcsh_complete_len;
-	    push(@tcsh_complete_selections, shift(@tcsh_complete_selections));
-	} else {
-	    &complete_internal('?') or return;
-	}
+        if ($var_TcshCompleteMode && @tcsh_complete_selections > 0) {
+            substr($line, $tcsh_complete_start, $tcsh_complete_len)
+                = $tcsh_complete_selections[0];
+            $D -= $tcsh_complete_len;
+            $tcsh_complete_len = length($tcsh_complete_selections[0]);
+            $D += $tcsh_complete_len;
+            push(@tcsh_complete_selections, shift(@tcsh_complete_selections));
+        } else {
+            &complete_internal('?') or return;
+        }
     } else {
-	@tcsh_complete_selections = ();
-	&complete_internal("\t") or return;
+        @tcsh_complete_selections = ();
+        &complete_internal("\t") or return;
     }
 
     1;
@@ -3168,15 +3200,15 @@ sub F_Complete
 ##
 ## The supposedly partial word at the cursor is "completed" as per the
 ## single argument:
-##	"\t"	complete as much of the word as is unambiguous
-##	"?"	list possibilities.
-## 	"*"	replace word with all possibilities. (who would use this?)
+##      "\t"    complete as much of the word as is unambiguous
+##      "?"     list possibilities.
+##      "*"     replace word with all possibilities. (who would use this?)
 ##
 ## A few notable variables used:
 ##   $rl_completer_word_break_characters
-##	-- characters in this string break a word.
+##      -- characters in this string break a word.
 ##   $rl_special_prefixes
-##	-- but if in this string as well, remain part of that word.
+##      -- but if in this string as well, remain part of that word.
 ##
 ## Returns true if a completion was done, false otherwise, so vi completion
 ##     routines can test it.
@@ -3193,16 +3225,16 @@ sub complete_internal
     if ($point)
     {
         ## Not at the beginning of the line; Isolate the word to be completed.
-	1 while (--$point && (-1 == index($rl_completer_word_break_characters,
-		substr($line, $point, 1))));
+        1 while (--$point && (-1 == index($rl_completer_word_break_characters,
+                substr($line, $point, 1))));
 
-	# Either at beginning of line or at a word break.
-	# If at a word break (that we don't want to save), skip it.
-	$point++ if (
-    		(index($rl_completer_word_break_characters,
-		       substr($line, $point, 1)) != -1) &&
-    		(index($rl_special_prefixes, substr($line, $point, 1)) == -1)
-	);
+        # Either at beginning of line or at a word break.
+        # If at a word break (that we don't want to save), skip it.
+        $point++ if (
+                (index($rl_completer_word_break_characters,
+                       substr($line, $point, 1)) != -1) &&
+                (index($rl_special_prefixes, substr($line, $point, 1)) == -1)
+        );
     }
 
     my $text = substr($line, $point, $end - $point);
@@ -3210,36 +3242,36 @@ sub complete_internal
     @matches = &completion_matches($rl_completion_function,$text,$line,$point);
 
     if (@matches == 0) {
-	return &F_Ding;
+        return &F_Ding;
     } elsif ($what_to_do eq "\t") {
-	my $replacement = shift(@matches);
-	$replacement .= $rl_completer_terminator_character if @matches == 1;
-	&F_Ding if @matches != 1;
-	if ($var_TcshCompleteMode) {
-	    @tcsh_complete_selections = (@matches, $text);
-	    $tcsh_complete_start = $point;
-	    $tcsh_complete_len = length($replacement);
-	}
-	if ($replacement ne '') {
-	    substr($line, $point, $end-$point) = $replacement;
-	    $D = $D - ($end - $point) + length($replacement);
-	}
+        my $replacement = shift(@matches);
+        $replacement .= $rl_completer_terminator_character if @matches == 1;
+        &F_Ding if @matches != 1;
+        if ($var_TcshCompleteMode) {
+            @tcsh_complete_selections = (@matches, $text);
+            $tcsh_complete_start = $point;
+            $tcsh_complete_len = length($replacement);
+        }
+        if ($replacement ne '') {
+            substr($line, $point, $end-$point) = $replacement;
+            $D = $D - ($end - $point) + length($replacement);
+        }
     } elsif ($what_to_do eq '?') {
-	shift(@matches); ## remove prepended common prefix
-	local $\ = '';
-	print $term_OUT "\n\r";
-	# print "@matches\n\r";
-	&pretty_print_list (@matches);
-	$force_redraw = 1;
+        shift(@matches); ## remove prepended common prefix
+        local $\ = '';
+        print $term_OUT "\n\r";
+        # print "@matches\n\r";
+        &pretty_print_list (@matches);
+        $force_redraw = 1;
     } elsif ($what_to_do eq '*') {
-	shift(@matches); ## remove common prefix.
-	local $" = $rl_completer_terminator_character;
-	my $replacement = "@matches$rl_completer_terminator_character";
-	substr($line, $point, $end-$point) = $replacement; ## insert all.
-	$D = $D - ($end - $point) + length($replacement);
+        shift(@matches); ## remove common prefix.
+        local $" = $rl_completer_terminator_character;
+        my $replacement = "@matches$rl_completer_terminator_character";
+        substr($line, $point, $end-$point) = $replacement; ## insert all.
+        $D = $D - ($end - $point) + length($replacement);
     } else {
-	warn "\r\n[Internal error]";
-	return &F_Ding;
+        warn "\r\n[Internal error]";
+        return &F_Ding;
     }
 
     1;
@@ -3249,9 +3281,9 @@ sub complete_internal
 ## completion_matches(func, text, line, start)
 ##
 ## FUNC is a function to call as FUNC(TEXT, LINE, START)
-## 	where TEXT is the item to be completed
-##	      LINE is the whole command line, and
-##	      START is the starting index of TEXT in LINE.
+##      where TEXT is the item to be completed
+##            LINE is the whole command line, and
+##            START is the starting index of TEXT in LINE.
 ## The FUNC should return a list of items that might match.
 ##
 ## completion_matches will return that list, with the longest common
@@ -3280,15 +3312,15 @@ sub completion_matches
 
     ## if anything returned , find the common prefix among them
     if (@matches) {
-	my $prefix = $matches[0];
-	my $len = length($prefix);
-	for ($i = 1; $i < @matches; $i++) {
-	    next if substr($matches[$i], 0, $len) eq $prefix;
-	    $prefix = substr($prefix, 0, --$len);
-	    last if $len == 0;
-	    $i--; ## retry this one to see if the shorter one matches.
-	}
-	unshift(@matches, $prefix); ## make common prefix the first thing.
+        my $prefix = $matches[0];
+        my $len = length($prefix);
+        for ($i = 1; $i < @matches; $i++) {
+            next if substr($matches[$i], 0, $len) eq $prefix;
+            $prefix = substr($prefix, 0, --$len);
+            last if $len == 0;
+            $i--; ## retry this one to see if the shorter one matches.
+        }
+        unshift(@matches, $prefix); ## make common prefix the first thing.
     }
     @matches;
 }
@@ -3305,17 +3337,17 @@ sub rl_filename_list
     my $pattern = $_[0];
     my @files = (<$pattern*>);
     if ($var_CompleteAddsuffix) {
-	foreach (@files) {
-	    if (-l $_) {
-		$_ .= '@';
-	    } elsif (-d _) {
-		$_ .= '/';
-	    } elsif (-x _) {
-		$_ .= '*';
-	    } elsif (-S _ || -p _) {
-		$_ .= '=';
-	    }
-	}
+        foreach (@files) {
+            if (-l $_) {
+                $_ .= '@';
+            } elsif (-d _) {
+                $_ .= '/';
+            } elsif (-x _) {
+                $_ .= '*';
+            } elsif (-S _ || -p _) {
+                $_ .= '=';
+            }
+        }
     }
     return @files;
 }
@@ -3353,7 +3385,7 @@ sub pretty_print_list
     $maxwidth++;
 
     $columns = $maxwidth >= $rl_screen_width
-	       ? 1 : int($rl_screen_width / $maxwidth);
+               ? 1 : int($rl_screen_width / $maxwidth);
 
     ## if there's enough margin to interspurse among the columns, do so.
     $maxwidth += int(($rl_screen_width % $maxwidth) / $columns);
@@ -3364,11 +3396,11 @@ sub pretty_print_list
     $mark = $#list - $lines;
     local $\ = '';
     for ($l = 0; $l < $lines; $l++) {
-	for ($index = $l; $index <= $mark; $index += $lines) {
-	    printf("%-$ {maxwidth}s", $list[$index]);
-	}
-   	print $term_OUT $list[$index] if $index <= $#list;
-	print $term_OUT "\n\r";
+        for ($index = $l; $index <= $mark; $index += $lines) {
+            printf("%-$ {maxwidth}s", $list[$index]);
+        }
+        print $term_OUT $list[$index] if $index <= $#list;
+        print $term_OUT "\n\r";
     }
 }
 
@@ -3382,7 +3414,7 @@ sub F_ViAcceptLine
 
 # Repeat the most recent one of these vi commands:
 #
-#   a A c C d D i I p P r R s S x X ~ 
+#   a A c C d D i I p P r R s S x X ~
 #
 sub F_ViRepeatLastCommand {
     my($count) = @_;
@@ -3393,13 +3425,13 @@ sub F_ViRepeatLastCommand {
     # Multiply @lastcmd's numeric arg by $count.
     unless ($count == 1) {
 
-	my $n = '';
-	while (@lastcmd and $lastcmd[0] =~ /^\d$/) {
-	    $n *= 10;
-	    $n += shift(@lastcmd);
-	}
-	$count *= $n unless $n eq '';
-	unshift(@lastcmd, split(//, $count));
+        my $n = '';
+        while (@lastcmd and $lastcmd[0] =~ /^\d$/) {
+            $n *= 10;
+            $n += shift(@lastcmd);
+        }
+        $count *= $n unless $n eq '';
+        unshift(@lastcmd, split(//, $count));
     }
 
     push(@Pending, @lastcmd);
@@ -3423,14 +3455,14 @@ sub F_ViFindMatchingParens {
     my $parens = substr($line, $D, 1);
 
     my $mate_direction = {
-		    '('  =>  [ ')',  1 ],
-		    '['  =>  [ ']',  1 ],
-		    '{'  =>  [ '}',  1 ],
-		    ')'  =>  [ '(', -1 ],
-		    ']'  =>  [ '[', -1 ],
-		    '}'  =>  [ '{', -1 ],
+                    '('  =>  [ ')',  1 ],
+                    '['  =>  [ ']',  1 ],
+                    '{'  =>  [ '}',  1 ],
+                    ')'  =>  [ '(', -1 ],
+                    ']'  =>  [ '[', -1 ],
+                    '}'  =>  [ '{', -1 ],
 
-		}->{$parens};
+                }->{$parens};
 
     return &F_Ding() unless $mate_direction;
 
@@ -3438,22 +3470,22 @@ sub F_ViFindMatchingParens {
 
     my $lvl = 1;
     while ($lvl) {
-	last if !$D && ($direction < 0);
-	&F_ForwardChar($direction);
-	last if &at_end_of_line;
-	my $c = substr($line, $D, 1);
-	if ($c eq $parens) {
-	    $lvl++;
-	}
-	elsif ($c eq $mate) {
-	    $lvl--;
-	}
+        last if !$D && ($direction < 0);
+        &F_ForwardChar($direction);
+        last if &at_end_of_line;
+        my $c = substr($line, $D, 1);
+        if ($c eq $parens) {
+            $lvl++;
+        }
+        elsif ($c eq $mate) {
+            $lvl--;
+        }
     }
 
     if ($lvl) {
-	# We didn't find a match
-	$D = $old_d;
-	return &F_Ding();
+        # We didn't find a match
+        $D = $old_d;
+        return &F_Ding();
     }
 }
 
@@ -3510,16 +3542,16 @@ sub findchar {
     my($c, $direction, $offset, $n) = @_;
     my $old_d = $D;
     while ($n) {
-	last if !$D && ($direction < 0);
-	&F_ForwardChar($direction);
-	last if &at_end_of_line;
-	my $char = substr($line, $D, 1);
-	$n-- if substr($line, $D, 1) eq $c;
+        last if !$D && ($direction < 0);
+        &F_ForwardChar($direction);
+        last if &at_end_of_line;
+        my $char = substr($line, $D, 1);
+        $n-- if substr($line, $D, 1) eq $c;
     }
     if ($n) {
-	# Not found
-	$D = $old_d;
-	return &F_Ding;
+        # Not found
+        $D = $old_d;
+        return &F_Ding;
     }
     &F_ForwardChar($offset);
 }
@@ -3529,15 +3561,15 @@ sub F_ViMoveToColumn {
     $D = 0;
     my $col = 1;
     while (!&at_end_of_line and $col < $n) {
-	my $c = substr($line, $D, 1);
-	if ($c eq "\t") {
-	    $col += 7;
-	    $col -= ($col % 8) - 1;
-	}
-	else {
-	    $col++;
-	}
-	$D += &CharSize($D);
+        my $c = substr($line, $D, 1);
+        if ($c eq "\t") {
+            $col += 7;
+            $col -= ($col % 8) - 1;
+        }
+        else {
+            $col++;
+        }
+        $D += &CharSize($D);
     }
 }
 
@@ -3604,11 +3636,11 @@ sub do_delete {
     return &F_Ding if !defined $other_end;
 
     if ($other_end < 0) {
-	# dd - delete entire line
-	&kill_text(0, length($line), 1);
+        # dd - delete entire line
+        &kill_text(0, length($line), 1);
     }
     else {
-	&kill_text($D, $other_end, 1);
+        &kill_text($D, $other_end, 1);
     }
 
     1;    # True return value
@@ -3686,17 +3718,17 @@ sub get_position {
     my $re = $poshash->{$ord};
 
     if ($re) {
-	my $c = pack('c', $ord);
-	if (lc($c) eq 'b') {
-	    &backward_scan($count, $re);
-	}
-	else {
-	    &forward_scan($count, $re);
-	}
+        my $c = pack('c', $ord);
+        if (lc($c) eq 'b') {
+            &backward_scan($count, $re);
+        }
+        else {
+            &forward_scan($count, $re);
+        }
     }
     else {
-	# Move the local copy of the cursor
-	&do_command($var_EditingMode{'vipos'}, $count, $ord);
+        # Move the local copy of the cursor
+        &do_command($var_EditingMode{'vipos'}, $count, $ord);
     }
 
     # Return the new cursor (undef if illegal command)
@@ -3715,16 +3747,16 @@ sub F_ViFirstWord
 sub forward_scan {
     my($count, $re) = @_;
     while ($count--) {
-	last unless substr($line, $D) =~ m{^($re)};
-	$D += length($1);
+        last unless substr($line, $D) =~ m{^($re)};
+        $D += length($1);
     }
 }
 
 sub backward_scan {
     my($count, $re) = @_;
     while ($count--) {
-	last unless substr($line, 0, $D) =~ m{($re)$};
-	$D -= length($1);
+        last unless substr($line, 0, $D) =~ m{($re)$};
+        $D -= length($1);
     }
 }
 
@@ -3734,12 +3766,12 @@ sub F_ViToggleCase {
     my($count) = @_;
     &save_dot_buf(@_);
     while ($count-- > 0) {
-	substr($line, $D, 1) =~ tr/A-Za-z/a-zA-Z/;
-	&F_ForwardChar(1);
-	if (&at_end_of_line) {
-	    &F_BackwardChar(1);
-	    last;
-	}
+        substr($line, $D, 1) =~ tr/A-Za-z/a-zA-Z/;
+        &F_ForwardChar(1);
+        if (&at_end_of_line) {
+            &F_BackwardChar(1);
+            last;
+        }
     }
 }
 
@@ -3790,15 +3822,15 @@ sub F_PrintHistory {
     my $i;
     my $shift = ($Vi_mode != 0);
     for $i ($start .. $end) {
-	print + ($i == $rl_HistoryIndex) ? '>' : ' ',
+        print + ($i == $rl_HistoryIndex) ? '>' : ' ',
 
-		sprintf("%${lmh}d: ", @rl_History - $i + $shift),
+                sprintf("%${lmh}d: ", @rl_History - $i + $shift),
 
-		($i < @rl_History)       ? $rl_History[$i] :
-		($i == $rl_HistoryIndex) ? $line           :
-		                           $line_for_revert,
+                ($i < @rl_History)       ? $rl_History[$i] :
+                ($i == $rl_HistoryIndex) ? $line           :
+                                           $line_for_revert,
 
-		"\n";
+                "\n";
     }
     print $lspace, ". . .\n" if $end < @rl_History;
     print "$hdr\n";
@@ -3825,49 +3857,49 @@ sub F_ViSearch {
 
     my $str = &get_vi_search_str($c);
     if (!defined $str) {
-	# Search aborted by deleting the '/' at the beginning of the line
-	return &F_ViInput() if $line eq '';
-	return();
+        # Search aborted by deleting the '/' at the beginning of the line
+        return &F_ViInput() if $line eq '';
+        return();
     }
 
     # Null string repeats last search
     if ($str eq '') {
-	return &F_Ding unless defined $Vi_search_re;
+        return &F_Ding unless defined $Vi_search_re;
     }
     else {
-	# Convert to a regular expression.  Interpret $str Like vi in nomagic
-	#     mode: '^', '$', '\<', and '\>' positional assertions, '\*' 
-	#     quantifier, '\.' and '\[]' character classes.
+        # Convert to a regular expression.  Interpret $str Like vi in nomagic
+        #     mode: '^', '$', '\<', and '\>' positional assertions, '\*'
+        #     quantifier, '\.' and '\[]' character classes.
 
-	my @chars = ($str =~ m{(\\?.)}g);
-	my(@re, @tail);
-	unshift(@re,   shift(@chars)) if @chars and $chars[0]  eq '^';
-	push   (@tail, pop(@chars))   if @chars and $chars[-1] eq '$';
-	my $in_chclass;
-	my %chmap = (
-	    '\<' => '\b(?=\w)',
-	    '\>' => '(?<=\w)\b',
-	    '\*' => '*',
-	    '\[' => '[',
-	    '\.' => '.',
-	);
-	my $ch;
-	foreach $ch (@chars) {
-	    if ($in_chclass) {
-		# Any backslashes in vi char classes are literal
-		push(@re, "\\") if length($ch) > 1;
-		push(@re, $ch);
-		$in_chclass = 0 if $ch =~ /\]$/;
-	    }
-	    else {
-		push(@re, (length $ch == 2) ? ($chmap{$ch} || $ch) :
-			  ($ch =~ /^\w$/)   ? $ch                  :
-			                      ("\\", $ch));
-		$in_chclass = 1 if $ch eq '\[';
-	    }
-	}
-	my $re = join('', @re, @tail);
-	$Vi_search_re = q{$re};
+        my @chars = ($str =~ m{(\\?.)}g);
+        my(@re, @tail);
+        unshift(@re,   shift(@chars)) if @chars and $chars[0]  eq '^';
+        push   (@tail, pop(@chars))   if @chars and $chars[-1] eq '$';
+        my $in_chclass;
+        my %chmap = (
+            '\<' => '\b(?=\w)',
+            '\>' => '(?<=\w)\b',
+            '\*' => '*',
+            '\[' => '[',
+            '\.' => '.',
+        );
+        my $ch;
+        foreach $ch (@chars) {
+            if ($in_chclass) {
+                # Any backslashes in vi char classes are literal
+                push(@re, "\\") if length($ch) > 1;
+                push(@re, $ch);
+                $in_chclass = 0 if $ch =~ /\]$/;
+            }
+            else {
+                push(@re, (length $ch == 2) ? ($chmap{$ch} || $ch) :
+                          ($ch =~ /^\w$/)   ? $ch                  :
+                                              ("\\", $ch));
+                $in_chclass = 1 if $ch eq '\[';
+            }
+        }
+        my $re = join('', @re, @tail);
+        $Vi_search_re = q{$re};
     }
 
     local $reverse = $Vi_search_reverse = ($c eq '/') ? 1 : 0;
@@ -3884,16 +3916,16 @@ sub F_ViRepeatSearch {
 }
 
 ## returns a new $i or -1 if not found.
-sub vi_search { 
+sub vi_search {
     my ($i) = @_;
-    return -1 if $i < 0 || $i > $#rl_History; 	 ## for safety
+    return -1 if $i < 0 || $i > $#rl_History;    ## for safety
     while (1) {
-	return $i if $rl_History[$i] =~ /$Vi_search_re/;
-	if ($reverse) {
-	    return -1 if $i-- == 0;
-	} else {
-	    return -1 if $i++ == $#rl_History;
-	}
+        return $i if $rl_History[$i] =~ /$Vi_search_re/;
+        if ($reverse) {
+            return -1 if $i-- == 0;
+        } else {
+            return -1 if $i++ == $#rl_History;
+        }
     }
 }
 
@@ -3917,11 +3949,11 @@ sub get_vi_search_str {
 
     # Gather a search string in our local $line.
     while ($lastcommand ne 'F_ViEndSearch') {
-	&do_command($var_EditingMode{'visearch'}, 1, ord(&getc_with_pending));
-	&redisplay();
+        &do_command($var_EditingMode{'visearch'}, 1, ord(&getc_with_pending));
+        &redisplay();
 
-	# We've backspaced past beginning of line
-	return undef if !defined $line;
+        # We've backspaced past beginning of line
+        return undef if !defined $line;
     }
     $line;
 }
@@ -3930,11 +3962,11 @@ sub F_ViEndSearch {}
 
 sub F_ViSearchBackwardDeleteChar {
     if ($line eq '') {
-	# Backspaced past beginning of line - terminate search mode
-	undef $line;
+        # Backspaced past beginning of line - terminate search mode
+        undef $line;
     }
     else {
-	&F_BackwardDeleteChar(@_);
+        &F_BackwardDeleteChar(@_);
     }
 }
 
@@ -3971,9 +4003,12 @@ sub F_ViReplaceChar
     &F_SelfInsert(1, ord($c));
 }
 
-##
-## Kill from cursor to end of line and enter input mode
-##
+=head2 F_ViChangeLine
+
+Delete characteres from cursor to end of line and enter VI input mode.
+
+=cut
+
 sub F_ViChangeLine
 {
     &start_dot_buf(@_);
@@ -4011,12 +4046,12 @@ sub F_ViYank
     my $pos = &get_position($count, undef, $ord, $Vi_yank_patterns);
     &F_Ding if !defined $pos;
     if ($pos < 0) {
-	# yy
-	&F_ViYankLine;
+        # yy
+        &F_ViYankLine;
     }
     else {
-	my($from, $to) = ($pos > $D) ? ($D, $pos) : ($pos, $D);
-	$KillBuffer = substr($line, $from, $to-$from);
+        my($from, $to) = ($pos > $D) ? ($D, $pos) : ($pos, $D);
+        $KillBuffer = substr($line, $from, $to-$from);
     }
 }
 
@@ -4092,17 +4127,17 @@ sub F_ViAcceptInsert {
 sub F_ViEndInsert
 {
     if ($Dot_buf) {
-	if ($line eq '' and $Dot_buf->[0] eq 'i') {
-	    # We inserted nothing into an empty $line - assume it was a
-	    #     &F_ViInput() call with no arguments, and don't save command.
-	    undef $Dot_buf;
-	}
-	else {
-	    # Regardless of which keystroke actually terminated this insert
-	    #     command, replace it with an <esc> in the dot buffer.
-	    @{$Dot_buf}[-1] = "\e";
-	    &end_dot_buf;
-	}
+        if ($line eq '' and $Dot_buf->[0] eq 'i') {
+            # We inserted nothing into an empty $line - assume it was a
+            #     &F_ViInput() call with no arguments, and don't save command.
+            undef $Dot_buf;
+        }
+        else {
+            # Regardless of which keystroke actually terminated this insert
+            #     command, replace it with an <esc> in the dot buffer.
+            @{$Dot_buf}[-1] = "\e";
+            &end_dot_buf;
+        }
     }
     &F_ViCommandMode;
     # Move cursor back to the last inserted character, but not when
@@ -4117,13 +4152,13 @@ sub F_ViDigit {
     my $ord0 = ord('0');
     while (1) {
 
-	$n *= 10;
-	$n += $ord - $ord0;
+        $n *= 10;
+        $n += $ord - $ord0;
 
-	my $c = &getc_with_pending;
-	return unless defined $c;
-	$ord = ord($c);
-	last unless $c =~ /^\d$/;
+        my $c = &getc_with_pending;
+        return unless defined $c;
+        $ord = ord($c);
+        last unless $c =~ /^\d$/;
     }
 
     $n *= $count;                   # So  2d3w  deletes six words
@@ -4141,20 +4176,20 @@ sub F_ViComplete {
     my $ch;
     while (1) {
 
-	&F_Complete() or return;
+        &F_Complete() or return;
 
-	# Vi likes the cursor one character right of where emacs like it.
-	&F_ForwardChar(1);
-	&force_redisplay();
+        # Vi likes the cursor one character right of where emacs like it.
+        &F_ForwardChar(1);
+        &force_redisplay();
 
-	# Look ahead to the next input keystroke.
-	$ch = &getc_with_pending();
-	last unless ord($ch) == $ord;   # Not a '\' - quit.
+        # Look ahead to the next input keystroke.
+        $ch = &getc_with_pending();
+        last unless ord($ch) == $ord;   # Not a '\' - quit.
 
-	# Another '\' was typed - put the cursor back where &F_Complete left
-	#     it, and try again.
-	&F_BackwardChar(1);
-	$lastcommand = 'F_Complete';   # Play along with &F_Complete's kludge
+        # Another '\' was typed - put the cursor back where &F_Complete left
+        #     it, and try again.
+        &F_BackwardChar(1);
+        $lastcommand = 'F_Complete';   # Play along with &F_Complete's kludge
     }
     unshift(@Pending, $ch);      # Unget the lookahead keystroke
 
@@ -4202,7 +4237,7 @@ sub F_KillRegion {
     return F_Ding unless $line_rl_mark == $rl_HistoryIndex;
     $rl_mark = length $line if $rl_mark > length $line;
     kill_text($rl_mark, $D, 1);
-    $line_rl_mark = -1;		# Disable mark
+    $line_rl_mark = -1;         # Disable mark
 }
 
 sub F_CopyRegionAsKill {
@@ -4219,9 +4254,9 @@ sub clipboard_set {
     my $in = shift;
     if ($^O eq 'os2') {
       eval {
-	require OS2::Process;
-	OS2::Process::ClipbrdText_set($in); # Do not disable \r\n-conversion
-	1
+        require OS2::Process;
+        OS2::Process::ClipbrdText_set($in); # Do not disable \r\n-conversion
+        1
       } and return;
     } elsif ($^O eq 'MSWin32') {
       eval {
@@ -4261,9 +4296,9 @@ sub F_YankClipboard
     my $in;
     if ($^O eq 'os2') {
       eval {
-	require OS2::Process;
-	$in = OS2::Process::ClipbrdText();
-	$in =~ s/\r\n/\n/g;		# With old versions, or what?
+        require OS2::Process;
+        $in = OS2::Process::ClipbrdText();
+        $in =~ s/\r\n/\n/g;             # With old versions, or what?
       }
     } elsif ($^O eq 'MSWin32') {
       eval {
@@ -4274,21 +4309,21 @@ sub F_YankClipboard
     } else {
       my $mess;
       if ($ENV{RL_PASTE_CMD}) {
-	$mess = "Reading from pipe `$ENV{RL_PASTE_CMD}'";
-	open PASTE, "$ENV{RL_PASTE_CMD} |" or warn("$mess: $!"), return;
+        $mess = "Reading from pipe `$ENV{RL_PASTE_CMD}'";
+        open PASTE, "$ENV{RL_PASTE_CMD} |" or warn("$mess: $!"), return;
       } elsif (defined $ENV{HOME}) {
-	$mess = "Reading from file `$ENV{HOME}/.rl_cutandpaste'";
-	open PASTE, "< $ENV{HOME}/.rl_cutandpaste" or warn("$mess: $!"), return;
+        $mess = "Reading from file `$ENV{HOME}/.rl_cutandpaste'";
+        open PASTE, "< $ENV{HOME}/.rl_cutandpaste" or warn("$mess: $!"), return;
       }
       if ($mess) {
-	local $/;
-	$in = <PASTE>;
-	close PASTE or warn("$mess, closing: $!");
+        local $/;
+        $in = <PASTE>;
+        close PASTE or warn("$mess, closing: $!");
       }
     }
     if (defined $in) {
-	$in =~ s/\n+$//;
-	return &TextInsert($_[0], $in);
+        $in =~ s/\n+$//;
+        return &TextInsert($_[0], $in);
     }
     &TextInsert($_[0], $KillBuffer);
 }
@@ -4306,7 +4341,7 @@ sub F_EndUndoGroup {
     push @undo, $now;
 }
 
-sub F_DoNothing {		# E.g., reset digit-argument
+sub F_DoNothing {               # E.g., reset digit-argument
     1;
 }
 
@@ -4337,9 +4372,9 @@ sub F_MergeInserts {
     my ($b, $e) = ($memorizedPos, $D);
     ($b, $e) = ($e, $b) if $e < $b;
     if ($n) {
-	substr($line, $e, 0) = substr($line, $b, $e - $b) x ($n - 1);
+        substr($line, $e, 0) = substr($line, $b, $e - $b) x ($n - 1);
     } else {
-	substr($line, $b, $e - $b) = '';
+        substr($line, $b, $e - $b) = '';
     }
     $D = $b + ($e - $b) * $n;
 }
@@ -4379,392 +4414,3 @@ sub F_EndEditGroup {
 }
 
 1;
-__END__
-=pod
-
-=head1 Term::ReadLine::readline
-
-A pretty full-function package similar to GNU's readline.
-Includes support for EUC-encoded Japanese text.
-
-Written by Jeffrey Friedl, Omron Corporation (jfriedl@omron.co.jp)
-
-Comments, corrections welcome.
-
-Thanks to the people at FSF for readline (and the code I referenced
-while writing this), and for Roland Schemers whose line_edit.pl I used
-as an early basis for this.
-
-=head2 Synopsis
-
-(see the manual for complete info)
-
-Once this package is included (require'd), you can then call:
-
-    $text = &readline'readline($input);
-
-to get lines of input from the user.
-
-Normally, it reads F<~/.inputrc> when loaded. To suppress this, set
-
- 	$readline'rl_NoInitFromFile = 1;
-
-before requiring the package.
-
-Call I<rl_bind()> to add your own key bindings, as in:
-
-	&readline'rl_bind('C-L', 'possible-completions');
-
-Call rl_set to set mode variables yourself, as in:
-
-	&readline'rl_set('TcshCompleteMode', 'On');
-
-To change the input mode (emacs or vi) use F<~/.inputrc> or call
-
- 	&readline::rl_set('EditingMode', 'vi');
-or:
- 	&readline::rl_set('EditingMode', 'emacs');
-
-Call rl_basic_commands to set your own command completion, as in:
-
-       &readline'rl_basic_commands('print', 'list', 'quit', 'run', 'status');
-
-=head2 What's Cool
-
-=over
-
-=item *
-hey, it's in perl.
-
-=item *
-Pretty full GNU readline like library...
-
-=item *
-support for F<~/.inputrc>
-
-=item *
-horizontal scrolling
-
-=item *
-command/file completion
-
-=item *
-rebinding
-
-=item *
-history (with search)
-
-=item *
-undo
-
-=item *
-numeric prefixes
-
-=item *
-supports multi-byte characters (at least for the Japanese I use).
-
-=item *
-Has a tcsh-like completion-function mode.call &readline'rl_set('tcsh-complete-mode', 'On') to turn on.
-
-=back
-
-
-=head2 What's not Cool
-
-=over
-
-=item *
-Can you say HUGE?
-
-=item *
-I can't spell, so comments riddled with misspellings.
-
-=item *
-Written by someone that has never really used readline.
-
-=item * 
-History mechanism is slightly different than GNU... may get
-fixed someday, but I like it as it is now...
-
-=item *
-Killbuffer not a ring.. just one level.
-
-=item *
-Obviously not well tested yet.
-
-=item *
-Written by someone that doesn't have a bell on his terminal, so
-
-=item *
-proper readline use of the bell may not be here.
-
-=back
-
-=head2 Functions and variables
-
-Functions beginning with C<F_ >are functions that are mapped to keys.
-Variables and functions beginning C<rl_> may be accessed/set/called/read
-from outside the package.  Other things are internal.
-
-Some notable internal-only variables of global proportions:
-
-=over
-
-=item  C<$prompt> 
-line prompt (passed from user)
-
-=item  C<$line>
-the line being input
-
-=item  C<$D>
-`Dot'' index into $line of the cursor's location.
-
-=item  C<$InsertMode>
-usually true. False means overwrite mode.
-
-=item  C<$InputLocMsg>
-string for error messages, such as "[~/.inputrc line 2]"
-
-=item  C<%emacs_keymap>
-keymap for emacs-mode bindings:
-
-=item C<@emacs_keymap>
-bindings indexed by ASCII ordinal
-
-=item C<$emacs_keymap{'name'}>
-Is "emacs_keymap"
-
-=item  C<$emacs_keymap{'default'}>
-is "SelfInsert"  (default binding)
-
-=item  C<%vi_keymap>
-keymap for vi input mode bindings
-
-=item  C<%vicmd_keymap>
-keymap for vi command mode bindings
-
-=item  C<%vipos_keymap>
-keymap for vi positioning command bindings
-
-=item  C<%visearch_keymap>
-keymap for vi search pattern input mode bindings
-
-=item  C<%KeyMap>
-current keymap in effect.
-
-=item  C<$LastCommandKilledText>
-needed so that subsequent kills accumulate
-
-=item  C<$lastcommand>
-name of command previously run
-
-=item C<$lastredisplay>
-text placed upon screen during previous &redisplay
-
-=item  C$<si>
-screen index; index into $line of leftmost char &redisplay'ed
-
-=item  C<$force_redraw>
-if set to true, causes &redisplay to be verbose.
-
-=item  C<$AcceptLine>
-when set, its value is returned from &readline.
-
-=item  C<$ReturnEOF>
-unless this also set, in which case undef is returned.
-
-=item  C<@Pending>
-characters to be used as input.
-
-=item  C<@undo>
-array holding all states of current line, for undoing.
-
-=item  C<$KillBuffer>
-top of kill ring (well, don't have a kill ring yet)
-
-=item  C<@tcsh_complete_selections>
-For tcsh mode, possible selections.
-
-=back
-
-Some internal variables modified by I<&rl_set()>. See comment at I<&rl_set> for
-info about how these set'able variables work.
-
-=over
-
-=item C<$var_EditingMode>
-a keymap typeglob like C<%emacs_keymap> or C<%vi_keymap>
-
-=item C<$var_TcshCompleteMode> 
-If true, the completion function works
-like in tcsh.  That is, the first time you try to complete something,
-the common prefix is completed for you. Subsequent completion tries
-thout other commands in between) cycles the command line through the
-various possibilities.  If/when you get the one you want, just
-continue typing.
-
-=back
-
-Other C<$var_> things not supported yet.
-
-Some variables used internally, but may be accessed from outside...
-
-=over
-
-=item C<$VERSION> 
-Version of this package. It is used up by C<../Makefile.PL>
-
-=item C<$rl_readline_name>
-Name of program, possibly C<$0>. Used in F<.initrc> if/endif stuff.
-
-=item C<$rl_NoInitFromFile>
-If defined when package is require'd, F<~/.inputrc> will not be read.
-
-=item C<@rl_History>
-array of previous lines input.
-n
-=item C<$rl_HistoryIndex>
-history pointer (for moving about history array)
-
-=item C<$rl_completion_function>
-See L<How Command Completion Works>.
-
-=item C<$rl_basic_word_break_characters>
-string of characters that can cause a word break for forward-word, etc.
-
-=item C<$rl_start_default_at_beginning>
-Normally, the user's cursor starts at the end of any default text
-passed to readline.  If this variable is true, it starts at the
-beginning.
-
-=item C<$rl_completer_word_break_characters>
-like C<$rl_basic_word_break_characters> (and in fact defaults to it),
-but for the completion function.
-
-=item C<$rl_completer_terminator_character> what to insert to separate
-a completed token from the rest.  Reset at beginning of completion to
-C<' '> so completion function can change it.
-
-=item  C<$rl_special_prefixes>
-characters that are part of this string as well
-as of C<$rl_completer_word_break_characters> cause a word break for the
-completer function, but remain part of the word.  An example: consider
- when the input might be perl code, and one wants to be able to
-complete on variable and function names, yet still have the sigil (C<$>,
-C<&>, C<@'>, C<%>) part of the C<$text> to be completed. Then set this var
-to C<&@$%> and make sure each of these characters is in $rl_completer_word_break_characters as well.
-
-=item C<$rl_MaxHistorySize>
-maximum size that the history array may grow.
-
-=item C<$rl_screen_width>
- width readline thinks it can use on the screen.
-
-=item C<$rl_correct_sw>
-is substructed from the real width of the terminal
-
-=item C<$rl_margin>
-scroll by moving to within this far from a margin.
-
-=item C<$rl_CLEAR>
-what to output to clear the screen.
-
-=item C<$rl_max_numeric_arg>
-maximum numeric arg allowed.
-
-=item C<$rl_vi_replace_default_on_insert>
-Normally, the text you enter is added to any default text passed to
-readline.  If this variable is true, default text will start out 
-highlighted (if supported by your terminal) and text entered while the 
-default is highlighted (during the _first_ insert mode only) will 
-replace the entire default line.  Once you have left insert mode (hit 
- escape), everything works as normal.  
-
-This behavior similar to many GUI controls' behavior, which select the
-default text so that new text replaces the old.
-
-Use with C<$rl_start_default_at_beginning> for normal-looking behavior
-(though it works just fine without it).
-
-I<Notes/Bugs:>
-
-=over
-
-=item *
-
-Control characters (like C-w) do not actually terminate this replace
-mode, for the same reason it does not work in emacs mode.
-
-=item *
-
-Spine-crawlingly scary subroutine redefinitions
-
-=back
-
-=item C<$rl_mark >
-start of the region
-
-=item C<$line_rl_mark>
-the line on which $rl_mark is active
-
-=item C<$_rl_japanese_mb>
-For character movement suppose Japanese (which?!)
-multi-byte encoding.  (How to make a sane default?)
-
-=back
-
-=head2 How Command Completion Works
-
-When asked to do a completion operation, readline isolates the word
-to the immediate left of the cursor (i.e. what's just been typed).
-This information is then passed to some function (which may be supplied
-by the user of this package) which will return an array of possible
-completions.
-
-If there is just one, that one is used.  Otherwise, they are listed
-in some way depending upon C<$var_TcshCompleteMode>.
-
-The default is to do filename completion.  The function that performs
-this task is _<readline::rl_filename_list()_.
-
-A minimal-trouble way to have command-completion is to call
-_readline::rl_basic_commands()_ with an array of command names, such as
-C<readline::rl_basic_commands('quit', 'run', 'set', 'list')>.
-Those command names will then be used for completion if the word being
-completed begins the line. Otherwise, completion is disallowed.
-
-The way to have the most power is to provide a function to readline
-which will accept information about a partial word that needs completed,
-and will return the appropriate list of possibilities.
-This is done by setting C<$readline::rl_completion_function> to the name of
-the function to run.
-
-That function will be called with three args C<($text, $line, $start)>.
-C<$text> is the partial word that should be completed.  C<$line> is the entire
-input line as it stands, and C<$start> is the index of the C<$text> in C$<line>.
-That is, zero if C<$text> is at the beginning of C<$line>.
-
-A cool completion function will look at C<$line> and C<$start> and give context-
-sensitive completion lists. Consider something that will do completion
-for two commands:
-
-    cat FILENAME
-    finger USERNAME
-    status [this|that|other]
-
-It (untested) might look like:
-
-    $readline'rl_completion_function = "main'complete";
-    sub complete { 
-        local($text, $_, $start) = @_;
-        ## return commands which may match if at the beginning....
-        return grep(/^$text/, 'cat', 'finger') if $start == 0;
-        return &rl_filename_list($text) if /^cat\b/;
-        return &my_namelist($text) if /^finger\b/;
-        return grep(/^text/, 'this', 'that','other') if /^status\b/;
-        ();
-	}
-
-A real completion function would be more robust.
-
-=cut
